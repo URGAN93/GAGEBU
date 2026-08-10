@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<link rel="manifest" href="manifest.json">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>가계부</title>
-<link rel="icon" href="32x32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="192x192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
@@ -65,21 +62,23 @@
   .passbook .total-bar-fill{ height:100%; background:linear-gradient(90deg, var(--gold-soft), var(--gold)); border-radius:4px; transition:width .5s ease; }
   .passbook .total-foot{ display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:rgba(243,239,228,0.55); }
 
-  .section-label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); opacity:0.7; letter-spacing:1px; margin:22px 2px 8px 2px; display:flex; justify-content:space-between; align-items:center; }
+  .section-label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); opacity:0.7; letter-spacing:1px; margin:22px 2px 8px 2px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; }
+  .section-label .chevron{ font-size:11px; opacity:0.6; transition:transform .2s ease; }
+  .section-label.collapsed .chevron{ transform:rotate(-90deg); }
+  .section-body.collapsed{ display:none; }
   .envelopes{ display:flex; flex-direction:column; gap:12px; }
 
   .envelope{
-    background:var(--paper); border-radius:14px; border:1px solid var(--line);
+    background:var(--paper-dim); border-radius:14px; border:1px solid var(--line);
     padding:16px 16px 14px 16px; position:relative; box-shadow:0 2px 0 rgba(19,42,51,0.03);
     cursor:pointer; transition:transform .15s ease;
   }
   .envelope:active{ transform:scale(0.98); }
   .envelope::before{
-    content:""; position:absolute; top:0; left:0; right:0; height:34px;
-    background:
-      linear-gradient(115deg, transparent 49.4%, var(--line) 49.4%, var(--line) 50.6%, transparent 50.6%),
-      linear-gradient(65deg, transparent 49.4%, var(--line) 49.4%, var(--line) 50.6%, transparent 50.6%);
-    border-radius:14px 14px 0 0; pointer-events:none; opacity:0.55;
+    content:""; position:absolute; top:0; right:0; width:0; height:0;
+    border-style:solid; border-width:0 22px 22px 0;
+    border-color:transparent var(--line) transparent transparent;
+    border-radius:0 14px 0 0; pointer-events:none;
   }
   .env-top{ display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1; }
   .env-name{ font-weight:700; font-size:15.5px; display:flex; align-items:center; gap:8px; }
@@ -88,7 +87,7 @@
   .env-numbers{ margin-top:10px; display:flex; align-items:baseline; gap:6px; }
   .env-spent{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:19px; }
   .env-limit{ font-size:12.5px; color:var(--ink-soft); opacity:0.6; }
-  .env-bar{ margin-top:10px; height:8px; border-radius:5px; background:var(--paper-dim); overflow:hidden; }
+  .env-bar{ margin-top:10px; height:8px; border-radius:5px; background:rgba(19,42,51,0.12); overflow:hidden; }
   .env-bar-fill{ height:100%; border-radius:5px; transition:width .5s ease; }
   .env-remain{ margin-top:8px; font-size:12px; color:var(--ink-soft); opacity:0.75; }
   .env-remain b{ font-weight:700; opacity:1; }
@@ -117,6 +116,16 @@
   .tx-meta{ font-size:11.5px; color:var(--ink-soft); opacity:0.6; }
   .tx-amt{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:14.5px; }
   .tx-empty{ padding:30px 16px; text-align:center; font-size:13px; color:var(--ink-soft); opacity:0.55; }
+
+  .pay-pill{
+    background:var(--paper-dim); border:1px solid var(--line); border-radius:20px;
+    padding:8px 13px; display:flex; flex-direction:column; gap:2px; min-width:76px;
+  }
+  .pay-pill .pp-name{ font-size:11px; color:var(--ink-soft); opacity:0.7; font-weight:600; }
+  .pay-pill .pp-amt{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--ink); }
+  .pay-pill.active{ background:var(--ink); border-color:var(--ink); }
+  .pay-pill.active .pp-name{ color:var(--gold-soft); opacity:1; }
+  .pay-pill.active .pp-amt{ color:var(--paper); }
 
   .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; }
   .cal-dow{ text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); opacity:0.5; padding-bottom:4px; }
@@ -209,16 +218,27 @@
     </div>
   </div>
 
-  <div class="section-label">생활 봉투</div>
-  <div class="envelopes" id="livingList"></div>
+  <div class="section-label" data-toggle="livingBody"><span>생활 봉투</span><span class="chevron">▾</span></div>
+  <div class="section-body" id="livingBody">
+    <div class="envelopes" id="livingList"></div>
+  </div>
 
-  <div class="section-label">비정기 봉투</div>
-  <div class="envelopes" id="irregularList"></div>
+  <div class="section-label" data-toggle="irregularBody"><span>비정기 봉투</span><span class="chevron">▾</span></div>
+  <div class="section-body" id="irregularBody">
+    <div class="envelopes" id="irregularList"></div>
+  </div>
+
+  <div class="section-label" data-toggle="fixedBody"><span>고정지출</span><span class="chevron">▾</span></div>
+  <div class="section-body" id="fixedBody">
+    <div class="tx-list" id="fixedList"></div>
+    <div id="fixedTotal" style="display:flex; justify-content:space-between; padding:10px 4px 0 4px; font-size:12.5px; color:var(--ink-soft); opacity:0.7;"></div>
+  </div>
 
   <div class="recent">
     <div class="view-tabs">
       <button class="view-tab active" id="tabList">최근 내역</button>
       <button class="view-tab" id="tabCalendar">달력</button>
+      <button class="view-tab" id="tabPay">결제수단</button>
       <select id="sortSelect" style="margin-left:auto; border:1px solid var(--line); border-radius:8px; padding:5px 8px; font-size:12px; background:#fff; color:var(--ink-soft);">
         <option value="date_desc">날짜 최신순</option>
         <option value="date_asc">날짜 오래된순</option>
@@ -226,7 +246,19 @@
         <option value="amount_asc">금액 낮은순</option>
       </select>
     </div>
+    <div id="payMethodSummary" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+    <div class="tx-list" id="payTxList" style="display:none; margin-bottom:10px;"></div>
+    <div id="payTxPager" style="display:none; justify-content:center; align-items:center; gap:16px; margin-bottom:12px;">
+      <button id="payPrevPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">‹</button>
+      <span id="payPageLabel" style="font-size:12px; color:var(--ink-soft); opacity:0.7;">1/1</span>
+      <button id="payNextPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">›</button>
+    </div>
     <div class="tx-list" id="txList"></div>
+    <div id="txPager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:10px;">
+      <button id="txPrevPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">‹</button>
+      <span id="txPageLabel" style="font-size:12px; color:var(--ink-soft); opacity:0.7;">1/1</span>
+      <button id="txNextPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">›</button>
+    </div>
     <div class="calendar-wrap" id="calendarWrap" style="display:none;">
       <div class="cal-grid" id="calGrid"></div>
       <div class="tx-list" id="calDayList" style="margin-top:12px; display:none;"></div>
@@ -292,6 +324,11 @@
     <div id="irregularManage"></div>
     <button class="add-row-btn" id="addIrregular">+ 비정기 봉투 추가</button>
   </div>
+  <div class="settings-group">
+    <h4>고정지출 (매달 반복, 한도 없음)</h4>
+    <div id="fixedManage"></div>
+    <button class="add-row-btn" id="addFixed">+ 고정지출 추가</button>
+  </div>
   <button class="sheet-submit" id="saveSettings">저장하기</button>
 </div>
 
@@ -333,15 +370,18 @@
   function irregularToRow(e, idx){ return { id:e.id, name:e.name, color:e.color, monthly_amount:e.monthlyAmount, start_month:e.startMonth, subcats:e.subcats||[], sort_order:idx }; }
   function rowToTx(r){ return { id:r.id, type:r.type, amount:r.amount, merchant:r.merchant, categoryId:r.category_id, subcat:r.subcat, payMethod:r.pay_method, fromId:r.from_id, toId:r.to_id, date:r.date }; }
   function txToRow(t){ return { id:t.id, type:t.type, amount:t.amount, merchant:t.merchant||null, category_id:t.categoryId||null, subcat:t.subcat||null, pay_method:t.payMethod||null, from_id:t.fromId||null, to_id:t.toId||null, date:t.date }; }
+  function rowToFixed(r){ return { id:r.id, name:r.name, amount:r.amount, payDay:r.pay_day, payMethod:r.pay_method }; }
+  function fixedToRow(f, idx){ return { id:f.id, name:f.name, amount:f.amount, pay_day:f.payDay||null, pay_method:f.payMethod||null, sort_order:idx }; }
 
   async function loadState(){
-    const [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}] =
+    const [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}, {data:fixedRows, error:e4}] =
       await Promise.all([
         sb.from('living_categories').select('*').order('sort_order'),
         sb.from('irregular_envelopes').select('*').order('sort_order'),
-        sb.from('transactions').select('*').order('date')
+        sb.from('transactions').select('*').order('date'),
+        sb.from('fixed_expenses').select('*').order('sort_order')
       ]);
-    if(e1||e2||e3){ showToast('Supabase 연결에 실패했어요'); console.error(e1,e2,e3); return structuredClone(DEFAULT_STATE); }
+    if(e1||e2||e3||e4){ showToast('Supabase 연결에 실패했어요'); console.error(e1,e2,e3,e4); return structuredClone(DEFAULT_STATE); }
 
     if(!livingRows.length && !irrRows.length){
       // 최초 1회: 기본값을 DB에 씨딩
@@ -352,11 +392,12 @@
     return {
       livingCategories: livingRows.map(rowToLivingCat),
       irregularEnvelopes: irrRows.map(rowToIrregular),
-      transactions: txRows.map(rowToTx)
+      transactions: txRows.map(rowToTx),
+      fixedExpenses: fixedRows.map(rowToFixed)
     };
   }
 
-  let state = { livingCategories:[], irregularEnvelopes:[], transactions:[] };
+  let state = { livingCategories:[], irregularEnvelopes:[], transactions:[], fixedExpenses:[] };
   let viewDate = new Date();
   let nextColorIdx = 0;
   const fmt = n => Math.round(n||0).toLocaleString('ko-KR');
@@ -384,9 +425,10 @@
 
     const monthTx = state.transactions.filter(t => inViewMonth(t.date));
     const livingTx = monthTx.filter(t=>t.type==='living');
-    const totalTransfersIn = monthTx.filter(t=>t.type==='transfer').reduce((s,t)=>s+t.amount,0);
-    const totalBudget = state.livingCategories.reduce((s,c)=>s+c.limit,0) + totalTransfersIn;
-    const totalSpent = livingTx.reduce((s,t)=>s+t.amount,0);
+    const irregularTxThisMonth = monthTx.filter(t=>t.type==='irregular');
+    const totalBudget = state.livingCategories.reduce((s,c)=>s+c.limit,0)
+      + state.irregularEnvelopes.reduce((s,e)=>s+e.monthlyAmount,0);
+    const totalSpent = livingTx.reduce((s,t)=>s+t.amount,0) + irregularTxThisMonth.reduce((s,t)=>s+t.amount,0);
     const totalPct = totalBudget ? Math.min(100, (totalSpent/totalBudget)*100) : 0;
 
     document.getElementById('totalSpent').textContent = fmt(totalSpent);
@@ -398,6 +440,7 @@
 
     renderLiving(monthTx, livingTx);
     renderIrregular();
+    renderFixed();
     renderTxList(monthTx);
     if(currentView === 'calendar') renderCalendar(monthTx);
   }
@@ -456,10 +499,10 @@
       const months = elapsedMonths(env.startMonth, vKey);
       const credited = env.monthlyAmount * months;
       const spentAll = state.transactions
-        .filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) <= vKey)
+        .filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) >= env.startMonth && t.date.slice(0,7) <= vKey)
         .reduce((s,t)=>s+t.amount,0);
       const transferredOutAll = state.transactions
-        .filter(t=>t.type==='transfer' && t.fromId===env.id && t.date.slice(0,7) <= vKey)
+        .filter(t=>t.type==='transfer' && t.fromId===env.id && t.date.slice(0,7) >= env.startMonth && t.date.slice(0,7) <= vKey)
         .reduce((s,t)=>s+t.amount,0);
       const spentThisMonth = state.transactions
         .filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) === vKey)
@@ -467,7 +510,7 @@
       const balance = credited - spentAll - transferredOutAll;
 
       const subTotals = {};
-      state.transactions.filter(t=>t.type==='irregular' && t.categoryId===env.id).forEach(t=>{
+      state.transactions.filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) >= env.startMonth).forEach(t=>{
         const key = t.subcat && t.subcat.trim() ? t.subcat.trim() : '기타';
         subTotals[key] = (subTotals[key]||0) + t.amount;
       });
@@ -475,7 +518,7 @@
       let subHtml = subEntries.length ? subEntries.map(([name,amt])=>
         `<div class="env-sub-row"><span>${name}</span><span>${fmt(amt)}원</span></div>`
       ).join('') : `<div class="env-sub-row"><span>세부 내역 없음</span><span></span></div>`;
-      const transferRows = state.transactions.filter(t=>t.type==='transfer' && t.fromId===env.id);
+      const transferRows = state.transactions.filter(t=>t.type==='transfer' && t.fromId===env.id && t.date.slice(0,7) >= env.startMonth);
       transferRows.forEach(t=>{
         const toCat = state.livingCategories.find(c=>c.id===t.toId);
         subHtml += `<div class="env-sub-row"><span>→ ${toCat?toCat.name:'(삭제됨)'}로 이체</span><span>-${fmt(t.amount)}원</span></div>`;
@@ -502,11 +545,102 @@
     });
   }
 
+  function renderFixed(){
+    const listEl = document.getElementById('fixedList');
+    const totalEl = document.getElementById('fixedTotal');
+    const items = state.fixedExpenses;
+    if(!items.length){
+      listEl.innerHTML = `<div class="tx-empty">등록된 고정지출이 없어요.</div>`;
+      totalEl.innerHTML = '';
+      return;
+    }
+    listEl.innerHTML = items.map(f=>`
+      <div class="tx-item">
+        <div class="tx-left">
+          <span class="tx-merchant">${f.name}</span>
+          <span class="tx-meta">${f.payDay ? `매달 ${f.payDay}일` : '결제일 미지정'}${f.payMethod ? ` · ${f.payMethod}` : ''}</span>
+        </div>
+        <span class="tx-amt">${fmt(f.amount)}원</span>
+      </div>
+    `).join('');
+    const total = items.reduce((s,f)=>s+f.amount,0);
+    totalEl.innerHTML = `<span>총 ${items.length}건</span><span style="font-weight:700; opacity:1;">합계 ${fmt(total)}원</span>`;
+  }
+
   function findEnvelopeName(type, categoryId){
     const list = type==='living' ? state.livingCategories : state.irregularEnvelopes;
     const found = list.find(c=>c.id===categoryId);
     return found ? found.name : '(삭제된 봉투)';
   }
+
+  let selectedPayFilter = null;
+  let payPage = 0;
+
+  function renderPayMethodSummary(monthTx){
+    const el = document.getElementById('payMethodSummary');
+    const spend = monthTx.filter(t=>t.type!=='transfer' && t.payMethod);
+    const totals = {};
+    spend.forEach(t=>{ totals[t.payMethod] = (totals[t.payMethod]||0) + t.amount; });
+    state.fixedExpenses.forEach(f=>{
+      if(f.payMethod) totals[f.payMethod] = (totals[f.payMethod]||0) + f.amount;
+    });
+    const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+    if(!entries.length){
+      el.innerHTML = '';
+      document.getElementById('payTxList').style.display = 'none';
+      document.getElementById('payTxPager').style.display = 'none';
+      return;
+    }
+    el.innerHTML = entries.map(([name,amt])=>`
+      <div class="pay-pill ${selectedPayFilter===name?'active':''}" data-pay="${name}" style="cursor:pointer;">
+        <span class="pp-name">${name}</span><span class="pp-amt">${fmt(amt)}원</span>
+      </div>
+    `).join('');
+    el.querySelectorAll('.pay-pill').forEach(p=>{
+      p.addEventListener('click', ()=>{
+        selectedPayFilter = (selectedPayFilter===p.dataset.pay) ? null : p.dataset.pay;
+        payPage = 0;
+        renderPayMethodSummary(monthTx);
+      });
+    });
+    renderPayTxList(monthTx);
+  }
+
+  function renderPayTxList(monthTx){
+    const listEl = document.getElementById('payTxList');
+    const pagerEl = document.getElementById('payTxPager');
+    if(!selectedPayFilter){
+      listEl.style.display = 'none';
+      pagerEl.style.display = 'none';
+      return;
+    }
+    const filtered = monthTx.filter(t=>t.type!=='transfer' && t.payMethod===selectedPayFilter)
+                             .sort((a,b)=>{
+                               if(currentSort === 'date_asc') return (a.date+a.id).localeCompare(b.date+b.id);
+                               if(currentSort === 'amount_desc') return b.amount - a.amount;
+                               if(currentSort === 'amount_asc') return a.amount - b.amount;
+                               return (b.date+b.id).localeCompare(a.date+a.id);
+                             });
+    listEl.style.display = 'flex';
+    if(!filtered.length){
+      listEl.innerHTML = `<div class="tx-empty">이번 달 ${selectedPayFilter} 지출 내역이 없어요.</div>`;
+      pagerEl.style.display = 'none';
+      return;
+    }
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if(payPage >= totalPages) payPage = totalPages - 1;
+    if(payPage < 0) payPage = 0;
+    const start = payPage * PAGE_SIZE;
+    listEl.innerHTML = filtered.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('');
+    attachTxRowHandlers(listEl);
+    pagerEl.style.display = 'flex';
+    document.getElementById('payPageLabel').textContent = `${payPage+1}/${totalPages}`;
+    document.getElementById('payPrevPage').disabled = payPage <= 0;
+    document.getElementById('payNextPage').disabled = payPage >= totalPages-1;
+  }
+
+  let txPage = 0;
+  const PAGE_SIZE = 10;
 
   function renderTxList(monthTx){
     const txListEl = document.getElementById('txList');
@@ -516,11 +650,19 @@
       if(currentSort === 'amount_asc') return a.amount - b.amount;
       return (b.date+b.id).localeCompare(a.date+a.id); // date_desc (기본)
     });
+    const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+    if(txPage >= totalPages) txPage = totalPages - 1;
+    if(txPage < 0) txPage = 0;
+
     if(sorted.length===0){
       txListEl.innerHTML = `<div class="tx-empty">이번 달 지출 내역이 없어요.<br>아래 버튼으로 추가해보세요.</div>`;
     }else{
-      txListEl.innerHTML = sorted.slice(0,8).map(t=>txRowHtml(t)).join('');
+      const start = txPage * PAGE_SIZE;
+      txListEl.innerHTML = sorted.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('');
     }
+    document.getElementById('txPageLabel').textContent = `${txPage+1}/${totalPages}`;
+    document.getElementById('txPrevPage').disabled = txPage <= 0;
+    document.getElementById('txNextPage').disabled = txPage >= totalPages-1;
     attachTxRowHandlers(txListEl);
   }
 
@@ -703,6 +845,10 @@
       });
       catChoices.appendChild(chip);
     });
+    if(selectedType==='irregular' && !selectedCat && currentEnvelopeList().length===1){
+      selectedCat = currentEnvelopeList()[0].id;
+      catChoices.querySelector('.cat-chip').classList.add('active');
+    }
   }
 
   function buildSubChoices(){
@@ -838,6 +984,7 @@
   const settingsSheet = document.getElementById('settingsSheet');
   const livingManage = document.getElementById('livingManage');
   const irregularManage = document.getElementById('irregularManage');
+  const fixedManage = document.getElementById('fixedManage');
 
   function nextColor(){
     const c = PALETTE[nextColorIdx % PALETTE.length];
@@ -898,6 +1045,37 @@
     });
   }
 
+  function buildFixedManage(){
+    fixedManage.innerHTML = '';
+    state.fixedExpenses.forEach(f=>{
+      const row = document.createElement('div');
+      row.className = 'manage-row';
+      row.dataset.id = f.id;
+      row.innerHTML = `
+        <div class="manage-row-top">
+          <input class="mr-name" data-field="name" value="${f.name}">
+          <button class="mr-del" data-action="del">✕</button>
+        </div>
+        <div class="mr-line"><label>금액</label><input type="number" data-field="amount" value="${f.amount}"></div>
+        <div class="mr-line"><label>결제일</label><input type="number" data-field="payDay" min="1" max="31" value="${f.payDay||''}" placeholder="예: 15"></div>
+        <div class="mr-line"><label>결제수단</label>
+          <select data-field="payMethod">
+            <option value="">선택 안 함</option>
+            ${PAY_METHODS.map(m=>`<option value="${m}" ${f.payMethod===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+      `;
+      row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
+        if(!confirm(`"${f.name}" 고정지출을 삭제할까요?`)) return;
+        const { error } = await sb.from('fixed_expenses').delete().eq('id', f.id);
+        if(error){ showToast('삭제 실패'); console.error(error); return; }
+        state.fixedExpenses = state.fixedExpenses.filter(x=>x.id!==f.id);
+        buildFixedManage();
+      });
+      fixedManage.appendChild(row);
+    });
+  }
+
   document.getElementById('addLiving').addEventListener('click', ()=>{
     state.livingCategories.push({ id:'cat_'+Date.now().toString(36), name:'새 봉투', color:nextColor(), limit:0, subcats:[] });
     buildLivingManage();
@@ -906,10 +1084,15 @@
     state.irregularEnvelopes.push({ id:'irr_'+Date.now().toString(36), name:'새 비정기 봉투', color:nextColor(), monthlyAmount:0, startMonth: monthKey(viewDate), subcats:[] });
     buildIrregularManage();
   });
+  document.getElementById('addFixed').addEventListener('click', ()=>{
+    state.fixedExpenses.push({ id:'fixed_'+Date.now().toString(36), name:'새 항목', amount:0, payDay:null });
+    buildFixedManage();
+  });
 
   function openSettings(){
     buildLivingManage();
     buildIrregularManage();
+    buildFixedManage();
     backdrop.classList.add('show');
     settingsSheet.classList.add('show');
   }
@@ -930,9 +1113,19 @@
       env.monthlyAmount = Math.max(0, parseInt(row.querySelector('[data-field="monthlyAmount"]').value,10) || 0);
       env.subcats = row.querySelector('[data-field="subcats"]').value.split(',').map(s=>s.trim()).filter(Boolean);
     });
+    fixedManage.querySelectorAll('.manage-row').forEach(row=>{
+      const f = state.fixedExpenses.find(x=>x.id===row.dataset.id);
+      if(!f) return;
+      f.name = row.querySelector('[data-field="name"]').value.trim() || f.name;
+      f.amount = Math.max(0, parseInt(row.querySelector('[data-field="amount"]').value,10) || 0);
+      const pd = parseInt(row.querySelector('[data-field="payDay"]').value,10);
+      f.payDay = (pd>=1 && pd<=31) ? pd : null;
+      f.payMethod = row.querySelector('[data-field="payMethod"]').value || null;
+    });
     const { error: e1 } = await sb.from('living_categories').upsert(state.livingCategories.map((c,i)=>livingCatToRow(c,i)));
     const { error: e2 } = await sb.from('irregular_envelopes').upsert(state.irregularEnvelopes.map((e,i)=>irregularToRow(e,i)));
-    if(e1||e2){ showToast('저장 실패, 다시 시도해주세요'); console.error(e1,e2); return; }
+    const { error: e3 } = await sb.from('fixed_expenses').upsert(state.fixedExpenses.map((f,i)=>fixedToRow(f,i)));
+    if(e1||e2||e3){ showToast('저장 실패, 다시 시도해주세요'); console.error(e1,e2,e3); return; }
     render();
     closeSheet();
     showToast('봉투 설정을 저장했어요');
@@ -943,41 +1136,89 @@
   let currentSort = 'date_desc';
   const tabList = document.getElementById('tabList');
   const tabCalendar = document.getElementById('tabCalendar');
+  const tabPay = document.getElementById('tabPay');
   const txListEl = document.getElementById('txList');
   const calendarWrap = document.getElementById('calendarWrap');
   const sortSelect = document.getElementById('sortSelect');
 
   sortSelect.addEventListener('change', ()=>{
     currentSort = sortSelect.value;
+    txPage = 0;
+    payPage = 0;
+    if(currentView==='pay'){
+      renderPayTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+    }else{
+      renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+    }
+  });
+  document.getElementById('txPrevPage').addEventListener('click', ()=>{
+    txPage--;
     renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
   });
+  document.getElementById('txNextPage').addEventListener('click', ()=>{
+    txPage++;
+    renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+  });
+  document.getElementById('payPrevPage').addEventListener('click', ()=>{
+    payPage--;
+    renderPayTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+  });
+  document.getElementById('payNextPage').addEventListener('click', ()=>{
+    payPage++;
+    renderPayTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+  });
 
-  tabList.addEventListener('click', ()=>{
-    currentView = 'list';
-    tabList.classList.add('active'); tabCalendar.classList.remove('active');
-    txListEl.style.display = 'flex';
-    calendarWrap.style.display = 'none';
-  });
-  tabCalendar.addEventListener('click', ()=>{
-    currentView = 'calendar';
-    tabCalendar.classList.add('active'); tabList.classList.remove('active');
+  function switchView(view){
+    currentView = view;
+    [tabList, tabCalendar, tabPay].forEach(t=>t.classList.remove('active'));
     txListEl.style.display = 'none';
-    calendarWrap.style.display = 'block';
-    document.getElementById('calDayList').style.display = 'none';
-    const monthTx = state.transactions.filter(t=>inViewMonth(t.date));
-    renderCalendar(monthTx);
-  });
+    calendarWrap.style.display = 'none';
+    sortSelect.style.display = 'none';
+    document.getElementById('payMethodSummary').style.display = 'none';
+
+    if(view==='list'){
+      tabList.classList.add('active');
+      txListEl.style.display = 'flex';
+      sortSelect.style.display = 'block';
+    }else if(view==='calendar'){
+      tabCalendar.classList.add('active');
+      calendarWrap.style.display = 'block';
+      document.getElementById('calDayList').style.display = 'none';
+      const monthTx = state.transactions.filter(t=>inViewMonth(t.date));
+      renderCalendar(monthTx);
+    }else if(view==='pay'){
+      tabPay.classList.add('active');
+      sortSelect.style.display = 'block';
+      document.getElementById('payMethodSummary').style.display = 'flex';
+      renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date)));
+    }
+  }
+  tabList.addEventListener('click', ()=>switchView('list'));
+  tabCalendar.addEventListener('click', ()=>switchView('calendar'));
+  tabPay.addEventListener('click', ()=>switchView('pay'));
 
   document.getElementById('prevMonth').addEventListener('click', ()=>{
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
     render();
     if(currentView==='calendar'){ document.getElementById('calDayList').style.display='none'; renderCalendar(state.transactions.filter(t=>inViewMonth(t.date))); }
+    if(currentView==='pay'){ renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date))); }
   });
   document.getElementById('nextMonth').addEventListener('click', ()=>{
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
     render();
     if(currentView==='calendar'){ document.getElementById('calDayList').style.display='none'; renderCalendar(state.transactions.filter(t=>inViewMonth(t.date))); }
+    if(currentView==='pay'){ renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date))); }
   });
+
+  document.querySelectorAll('.section-label[data-toggle]').forEach(label=>{
+    label.addEventListener('click', ()=>{
+      const body = document.getElementById(label.dataset.toggle);
+      body.classList.toggle('collapsed');
+      label.classList.toggle('collapsed');
+    });
+  });
+  document.getElementById('fixedBody').classList.add('collapsed');
+  document.querySelector('[data-toggle="fixedBody"]').classList.add('collapsed');
 
   (async function init(){
     state = await loadState();
