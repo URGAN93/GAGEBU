@@ -40,8 +40,13 @@
     min-height:100vh;
     display:flex;
     justify-content:center;
-    padding-bottom:100px;
+    padding-bottom:150px;
   }
+  .shell{ width:100%; display:flex; justify-content:center; }
+
+  .auth-screen{ position:fixed; inset:0; z-index:60; background:var(--paper); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .auth-box{ width:100%; max-width:360px; background:var(--paper-dim); border:1px solid var(--line); border-radius:18px; padding:26px 22px; box-shadow:var(--shadow); }
+  .auth-title{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:22px; margin-bottom:18px; text-align:center; color:var(--ink); }
   .app{ width:100%; max-width:480px; padding:env(safe-area-inset-top,0) 18px 0 18px; position:relative; }
 
   header{ padding:28px 4px 18px 4px; display:flex; align-items:flex-end; justify-content:space-between; }
@@ -67,6 +72,7 @@
   .passbook .total-bar{ margin-top:16px; height:6px; border-radius:4px; background:rgba(243,239,228,0.14); overflow:hidden; }
   .passbook .total-bar-fill{ height:100%; background:linear-gradient(90deg, var(--gold-soft), var(--gold)); border-radius:4px; transition:width .5s ease; }
   .passbook .total-foot{ display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:rgba(243,239,228,0.55); }
+  .passbook .total-combined{ font-size:10.5px; color:rgba(243,239,228,0.4); }
 
   .section-label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); opacity:0.7; letter-spacing:1px; margin:22px 2px 8px 2px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; }
   .section-label .chevron{ font-size:11px; opacity:0.6; transition:transform .2s ease; }
@@ -102,7 +108,7 @@
   .env-sub-row{ display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); padding:5px 0; border-top:1px dashed var(--line); }
   .env-caret{ font-size:11px; opacity:0.4; margin-left:4px; }
 
-  /* 비정기 봉투 전용 스타일 */
+  /* 비정기 카테고리 전용 스타일 */
   .envelope.irregular{ background:linear-gradient(155deg, #EFE9D8 0%, var(--paper) 100%); border-color:rgba(92,81,64,0.25); }
   .irr-balance-row{ display:flex; align-items:baseline; gap:6px; margin-top:10px; }
   .irr-balance{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:22px; color:var(--irregular); }
@@ -117,9 +123,9 @@
   .tx-list{ display:flex; flex-direction:column; background:var(--paper); border-radius:14px; border:1px solid var(--line); overflow:hidden; }
   .tx-item{ display:flex; justify-content:space-between; align-items:center; padding:13px 16px; border-bottom:1px solid var(--line); cursor:pointer; }
   .tx-item:last-child{ border-bottom:none; }
-  .tx-left{ display:flex; flex-direction:column; gap:3px; }
+  .tx-left{ display:flex; flex-direction:column; gap:3px; min-width:0; }
   .tx-merchant{ font-size:14px; font-weight:600; }
-  .tx-meta{ font-size:11.5px; color:var(--ink-soft); opacity:0.6; }
+  .tx-meta{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft); opacity:0.6; letter-spacing:-0.2px; }
   .tx-amt{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:14.5px; }
   .tx-empty{ padding:30px 16px; text-align:center; font-size:13px; color:var(--ink-soft); opacity:0.55; }
 
@@ -143,7 +149,7 @@
   .cal-day.today{ outline:2px solid var(--gold); }
 
   .fab{
-    position:fixed; left:50%; bottom:calc(22px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);
+    position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);
     width:min(444px, calc(100% - 36px)); background:var(--ink); color:var(--paper); border:none; border-radius:16px;
     padding:16px; font-family:'Pretendard'; font-weight:700; font-size:15.5px;
     display:flex; align-items:center; justify-content:center; gap:8px;
@@ -196,10 +202,60 @@
   .toast{ position:fixed; left:50%; bottom:100px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--paper); padding:11px 18px; border-radius:30px; font-size:13px; font-weight:600; opacity:0; transition:all .3s ease; pointer-events:none; z-index:40; white-space:nowrap; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-  @media (min-width:600px){ .app{ max-width:520px; padding-top:10px; } }
+  .side-rail{ display:none; }
+  .col-calendar, .col-analysis, .col-budget{ display:none; }
+  .app-cols[data-active="calendar"] .col-calendar{ display:block; }
+  .app-cols[data-active="analysis"] .col-analysis{ display:block; }
+  .app-cols[data-active="budget"] .col-budget{ display:block; }
+
+  .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:25;
+    display:flex; justify-content:center;
+    background:var(--paper); border-top:1px solid var(--line);
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom,0)) 12px;
+  }
+  .bottom-nav-inner{ display:flex; width:100%; max-width:480px; justify-content:space-around; }
+  .bn-item, .sr-item{ border:none; background:transparent; font-family:'Pretendard'; font-weight:700; color:var(--ink-soft); opacity:0.55; cursor:pointer; border-radius:10px; }
+  .bn-item{ font-size:12.5px; padding:7px 16px; }
+  .bn-item.active, .sr-item.active{ opacity:1; color:var(--ink); background:var(--paper-dim); }
+  .sr-item{ font-size:11.5px; width:56px; padding:12px 6px; }
+
+  @media (min-width:760px){
+    body{ padding-bottom:80px; }
+    .app{ max-width:640px; padding-top:14px; }
+    .shell{ align-items:flex-start; gap:18px; }
+    .side-rail{ display:flex; flex-direction:column; align-items:center; gap:20px; width:64px; flex-shrink:0; padding-top:36px; position:sticky; top:20px; }
+    .bottom-nav{ display:none; }
+    .fab{ bottom:calc(22px + env(safe-area-inset-bottom,0)); }
+    .calendar-wrap{ display:grid; grid-template-columns:1fr 340px; gap:16px; align-items:start; }
+    .calendar-wrap #calDayList{ margin-top:0; }
+  }
 </style>
 </head>
 <body>
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-title">가계부</div>
+    <div class="field">
+      <label>이메일</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>비밀번호</label>
+      <input type="password" id="authPassword" placeholder="비밀번호" autocomplete="current-password">
+    </div>
+    <button class="sheet-submit" id="authSignIn">로그인</button>
+    <button class="add-row-btn" id="authSignUp" style="margin-top:8px;">계정이 없다면 회원가입</button>
+    <div id="authError" style="display:none; margin-top:10px; font-size:12.5px; color:var(--over); text-align:center;"></div>
+  </div>
+</div>
+<div class="shell" id="shell" style="display:none;">
+<nav class="side-rail" id="sideRail">
+  <button class="sr-item active" data-col="calendar">내가계부</button>
+  <button class="sr-item" data-col="analysis">분석</button>
+  <button class="sr-item" data-col="budget">예산</button>
+  <button class="sr-item nav-settings-btn" data-action="settings">설정</button>
+</nav>
 <div class="app">
 
   <header>
@@ -207,15 +263,17 @@
     <div class="month-nav">
       <button id="prevMonth" aria-label="이전 달">‹</button>
       <button id="nextMonth" aria-label="다음 달">›</button>
-      <button id="openSettings" aria-label="설정">⚙</button>
     </div>
   </header>
+
+  <div class="app-cols" id="appCols" data-active="calendar">
+  <div class="col-budget" id="colBudget">
 
   <div class="passbook">
     <div class="eyebrow">이번 달 생활 예산</div>
     <div class="total-row">
       <span class="total-amt" id="totalSpent">0</span>
-      <span class="total-of">원 / <span id="totalBudget">0</span>원</span>
+      <span class="total-of">원 / <span id="totalBudget">0</span>원 <span class="total-combined" id="totalCombined"></span></span>
     </div>
     <div class="total-bar"><div class="total-bar-fill" id="totalBarFill" style="width:0%"></div></div>
     <div class="total-foot">
@@ -224,12 +282,12 @@
     </div>
   </div>
 
-  <div class="section-label" data-toggle="livingBody"><span>생활 봉투</span><span class="chevron">▾</span></div>
+  <div class="section-label" data-toggle="livingBody"><span>생활 카테고리</span><span class="chevron">▾</span></div>
   <div class="section-body" id="livingBody">
     <div class="envelopes" id="livingList"></div>
   </div>
 
-  <div class="section-label" data-toggle="irregularBody"><span>비정기 봉투</span><span class="chevron">▾</span></div>
+  <div class="section-label" data-toggle="irregularBody"><span>비정기 카테고리</span><span class="chevron">▾</span></div>
   <div class="section-body" id="irregularBody">
     <div class="envelopes" id="irregularList"></div>
   </div>
@@ -240,40 +298,69 @@
     <div id="fixedTotal" style="display:flex; justify-content:space-between; padding:10px 4px 0 4px; font-size:12.5px; color:var(--ink-soft); opacity:0.7;"></div>
   </div>
 
-  <div class="recent">
-    <div class="view-tabs">
-      <button class="view-tab active" id="tabList">최근 내역</button>
-      <button class="view-tab" id="tabCalendar">달력</button>
-      <button class="view-tab" id="tabPay">결제수단</button>
-      <select id="sortSelect" style="margin-left:auto; border:1px solid var(--line); border-radius:8px; padding:5px 8px; font-size:12px; background:#fff; color:var(--ink-soft);">
-        <option value="date_desc">날짜 최신순</option>
-        <option value="date_asc">날짜 오래된순</option>
-        <option value="amount_desc">금액 높은순</option>
-        <option value="amount_asc">금액 낮은순</option>
-      </select>
+  </div>
+  <div class="col-analysis" id="colAnalysis">
+    <div class="passbook">
+      <div class="eyebrow">이번 달 분석</div>
+      <div class="total-row">
+        <span class="total-amt" id="anaNet">0</span>
+        <span class="total-of">원 순합계 (수입 − 지출)</span>
+      </div>
     </div>
-    <div id="payMethodSummary" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
-    <div class="tx-list" id="payTxList" style="display:none; margin-bottom:10px;"></div>
-    <div id="payTxPager" style="display:none; justify-content:center; align-items:center; gap:16px; margin-bottom:12px;">
-      <button id="payPrevPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">‹</button>
-      <span id="payPageLabel" style="font-size:12px; color:var(--ink-soft); opacity:0.7;">1/1</span>
-      <button id="payNextPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">›</button>
+    <div class="tx-list" style="margin:14px 0;">
+      <div class="tx-item"><span class="tx-merchant">총 수입</span><span class="tx-amt" id="anaIncome">0원</span></div>
+      <div class="tx-item"><span class="tx-merchant">총 지출</span><span class="tx-amt" id="anaExpense">0원</span></div>
     </div>
-    <div class="tx-list" id="txList"></div>
-    <div id="txPager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:10px;">
-      <button id="txPrevPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">‹</button>
-      <span id="txPageLabel" style="font-size:12px; color:var(--ink-soft); opacity:0.7;">1/1</span>
-      <button id="txNextPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">›</button>
+
+    <div class="recent">
+      <div class="view-tabs">
+        <button class="view-tab" id="tabExpense">지출</button>
+        <button class="view-tab" id="tabIncome">수입</button>
+        <button class="view-tab active" id="tabAll">합계</button>
+        <button class="view-tab" id="tabPay">결제수단</button>
+        <select id="sortSelect" style="margin-left:auto; border:1px solid var(--line); border-radius:8px; padding:5px 8px; font-size:12px; background:#fff; color:var(--ink-soft);">
+          <option value="date_desc">날짜 최신순</option>
+          <option value="date_asc">날짜 오래된순</option>
+          <option value="amount_desc">금액 높은순</option>
+          <option value="amount_asc">금액 낮은순</option>
+        </select>
+      </div>
+      <div id="payMethodSummary" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+      <div class="tx-list" id="payTxList" style="display:none; margin-bottom:10px;"></div>
+      <div id="payTxPager" style="display:none; justify-content:center; align-items:center; gap:16px; margin-bottom:12px;">
+        <button id="payPrevPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">‹</button>
+        <span id="payPageLabel" style="font-size:12px; color:var(--ink-soft); opacity:0.7;">1/1</span>
+        <button id="payNextPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">›</button>
+      </div>
+      <div class="tx-list" id="txList"></div>
+      <div id="txPager" style="display:flex; justify-content:center; align-items:center; gap:16px; margin-top:10px;">
+        <button id="txPrevPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">‹</button>
+        <span id="txPageLabel" style="font-size:12px; color:var(--ink-soft); opacity:0.7;">1/1</span>
+        <button id="txNextPage" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;">›</button>
+      </div>
     </div>
-    <div class="calendar-wrap" id="calendarWrap" style="display:none;">
+  </div>
+
+  <div class="col-calendar" id="colCalendar">
+    <div class="calendar-wrap" id="calendarWrap">
       <div class="cal-grid" id="calGrid"></div>
       <div class="tx-list" id="calDayList" style="margin-top:12px; display:none;"></div>
     </div>
   </div>
 
+  </div>
+</div>
 </div>
 
-<button class="fab" id="openAdd">+ 지출 추가</button>
+<button class="fab" id="openAdd">+ 내역 추가</button>
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-inner">
+    <button class="bn-item active" data-col="calendar">내가계부</button>
+    <button class="bn-item" data-col="analysis">분석</button>
+    <button class="bn-item" data-col="budget">예산</button>
+    <button class="bn-item nav-settings-btn" data-action="settings">설정</button>
+  </div>
+</nav>
 
 <div class="sheet-backdrop" id="backdrop"></div>
 
@@ -281,8 +368,9 @@
   <div class="sheet-handle"></div>
   <h3 id="sheetTitle">지출 추가</h3>
   <div class="type-toggle" id="typeToggle">
-    <button class="type-btn active" data-type="living">생활 봉투</button>
-    <button class="type-btn" data-type="transfer">봉투 이체</button>
+    <button class="type-btn active" data-type="living">지출</button>
+    <button class="type-btn" data-type="income">수입</button>
+    <button class="type-btn" data-type="transfer">이체</button>
   </div>
   <div class="field">
     <label>금액</label>
@@ -297,7 +385,7 @@
     <input type="date" id="fDate">
   </div>
   <div class="field" id="fieldCat">
-    <label>봉투</label>
+    <label>카테고리</label>
     <div class="cat-choices" id="catChoices"></div>
   </div>
   <div class="field" id="fieldSub">
@@ -309,8 +397,12 @@
     <label>결제수단 <span style="font-weight:400; opacity:0.6;">(선택)</span></label>
     <div class="cat-choices" id="payChoices"></div>
   </div>
+  <div class="field" id="fieldRecurring" style="display:flex; align-items:center; justify-content:space-between;">
+    <label style="margin:0;">반복 (고정지출성 지출)</label>
+    <input type="checkbox" id="fRecurring">
+  </div>
   <div class="field" id="fieldTo" style="display:none;">
-    <label>어디로 (생활 봉투)</label>
+    <label>어디로 (생활 카테고리)</label>
     <div class="cat-choices" id="toChoices"></div>
   </div>
   <button class="sheet-submit" id="submitTx" disabled>추가하기</button>
@@ -319,23 +411,29 @@
 
 <div class="sheet" id="settingsSheet">
   <div class="sheet-handle"></div>
-  <h3>봉투 설정</h3>
+  <h3>카테고리 설정</h3>
   <div class="settings-group">
-    <h4>생활 봉투 (매월 리셋)</h4>
+    <h4>생활 카테고리 (매월 리셋)</h4>
     <div id="livingManage"></div>
-    <button class="add-row-btn" id="addLiving">+ 생활 봉투 추가</button>
+    <button class="add-row-btn" id="addLiving">+ 생활 카테고리 추가</button>
   </div>
   <div class="settings-group">
-    <h4>비정기 봉투 (매달 자동 충전 · 누적)</h4>
+    <h4>비정기 카테고리 (매달 자동 충전 · 누적)</h4>
     <div id="irregularManage"></div>
-    <button class="add-row-btn" id="addIrregular">+ 비정기 봉투 추가</button>
+    <button class="add-row-btn" id="addIrregular">+ 비정기 카테고리 추가</button>
   </div>
   <div class="settings-group">
     <h4>고정지출 (매달 반복, 한도 없음)</h4>
     <div id="fixedManage"></div>
     <button class="add-row-btn" id="addFixed">+ 고정지출 추가</button>
   </div>
+  <div class="settings-group">
+    <h4>결제수단</h4>
+    <div id="payManage"></div>
+    <button class="add-row-btn" id="addPay">+ 결제수단 추가</button>
+  </div>
   <button class="sheet-submit" id="saveSettings">저장하기</button>
+  <button class="sheet-delete" id="signOutBtn" style="margin-top:10px;">로그아웃</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -348,6 +446,10 @@
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2amRzdWNyYmJ6anV5b2dwa29iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODk4NTAsImV4cCI6MjEwMTg2NTg1MH0.t4xeGaX6Rbewl08HV-3696LSGwW1_ADwLzYkGPH0914';
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const PALETTE = ['#3E7A55','#3B6E8F','#B04338','#B98A2E','#6B5B95','#8A8577','#4B7B7F','#9C5B3C'];
+
+  // 로그인 전에는 앱 화면이 잠깐이라도 보이지 않도록 즉시 숨김
+  document.getElementById('openAdd').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
 
   function nowMonthKey(){
     const d = new Date();
@@ -366,7 +468,16 @@
     irregularEnvelopes: [
       { id:'irregular1', name:'비정기', color:PALETTE[6], monthlyAmount:200000, startMonth: nowMonthKey(), subcats:['의류','경조사','자동차','생활용품','여행','기타'] }
     ],
-    transactions: []
+    transactions: [],
+    fixedExpenses: [],
+    payMethods: [
+      { id:'pay_hyundai', name:'현대카드' },
+      { id:'pay_shinhan',  name:'신한카드' },
+      { id:'pay_kb',       name:'국민카드' },
+      { id:'pay_cash',     name:'현금' },
+      { id:'pay_kakao',    name:'카카오페이' },
+      { id:'pay_etc',      name:'기타' }
+    ]
     // { id, amount, merchant, type:'living'|'irregular', categoryId, subcat, date }
   };
 
@@ -374,36 +485,43 @@
   function livingCatToRow(c, idx){ return { id:c.id, name:c.name, color:c.color, limit_amount:c.limit, subcats:c.subcats||[], sort_order:idx }; }
   function rowToIrregular(r){ return { id:r.id, name:r.name, color:r.color, monthlyAmount:r.monthly_amount, startMonth:r.start_month, subcats:r.subcats||[] }; }
   function irregularToRow(e, idx){ return { id:e.id, name:e.name, color:e.color, monthly_amount:e.monthlyAmount, start_month:e.startMonth, subcats:e.subcats||[], sort_order:idx }; }
-  function rowToTx(r){ return { id:r.id, type:r.type, amount:r.amount, merchant:r.merchant, categoryId:r.category_id, subcat:r.subcat, payMethod:r.pay_method, fromId:r.from_id, toId:r.to_id, date:r.date }; }
-  function txToRow(t){ return { id:t.id, type:t.type, amount:t.amount, merchant:t.merchant||null, category_id:t.categoryId||null, subcat:t.subcat||null, pay_method:t.payMethod||null, from_id:t.fromId||null, to_id:t.toId||null, date:t.date }; }
+  function rowToTx(r){ return { id:r.id, type:r.type, amount:r.amount, merchant:r.merchant, categoryId:r.category_id, subcat:r.subcat, payMethod:r.pay_method, fromId:r.from_id, toId:r.to_id, date:r.date, isRecurring:r.is_recurring||false }; }
+  function txToRow(t){ return { id:t.id, type:t.type, amount:t.amount, merchant:t.merchant||null, category_id:t.categoryId||null, subcat:t.subcat||null, pay_method:t.payMethod||null, from_id:t.fromId||null, to_id:t.toId||null, date:t.date, is_recurring: !!t.isRecurring }; }
   function rowToFixed(r){ return { id:r.id, name:r.name, amount:r.amount, payDay:r.pay_day, payMethod:r.pay_method }; }
   function fixedToRow(f, idx){ return { id:f.id, name:f.name, amount:f.amount, pay_day:f.payDay||null, pay_method:f.payMethod||null, sort_order:idx }; }
+  function rowToPay(r){ return { id:r.id, name:r.name }; }
+  function payToRow(p, idx){ return { id:p.id, name:p.name, sort_order:idx }; }
 
   async function loadState(){
-    const [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}, {data:fixedRows, error:e4}] =
+    const [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}, {data:fixedRows, error:e4}, {data:payRows, error:e5}] =
       await Promise.all([
         sb.from('living_categories').select('*').order('sort_order'),
         sb.from('irregular_envelopes').select('*').order('sort_order'),
         sb.from('transactions').select('*').order('date'),
-        sb.from('fixed_expenses').select('*').order('sort_order')
+        sb.from('fixed_expenses').select('*').order('sort_order'),
+        sb.from('pay_methods').select('*').order('sort_order')
       ]);
-    if(e1||e2||e3||e4){ showToast('Supabase 연결에 실패했어요'); console.error(e1,e2,e3,e4); return structuredClone(DEFAULT_STATE); }
+    if(e1||e2||e3||e4||e5){ showToast('Supabase 연결에 실패했어요'); console.error(e1,e2,e3,e4,e5); return structuredClone(DEFAULT_STATE); }
 
     if(!livingRows.length && !irrRows.length){
       // 최초 1회: 기본값을 DB에 씨딩
       await sb.from('living_categories').insert(DEFAULT_STATE.livingCategories.map((c,i)=>livingCatToRow(c,i)));
       await sb.from('irregular_envelopes').insert(DEFAULT_STATE.irregularEnvelopes.map((e,i)=>irregularToRow(e,i)));
-      return structuredClone(DEFAULT_STATE);
+    }
+    if(!payRows.length){
+      // pay_methods 테이블이 비어있으면(신규 테이블 포함) 기본값 씨딩
+      await sb.from('pay_methods').insert(DEFAULT_STATE.payMethods.map((p,i)=>payToRow(p,i)));
     }
     return {
-      livingCategories: livingRows.map(rowToLivingCat),
-      irregularEnvelopes: irrRows.map(rowToIrregular),
+      livingCategories: livingRows.length ? livingRows.map(rowToLivingCat) : structuredClone(DEFAULT_STATE.livingCategories),
+      irregularEnvelopes: irrRows.length ? irrRows.map(rowToIrregular) : structuredClone(DEFAULT_STATE.irregularEnvelopes),
       transactions: txRows.map(rowToTx),
-      fixedExpenses: fixedRows.map(rowToFixed)
+      fixedExpenses: fixedRows.map(rowToFixed),
+      payMethods: payRows.length ? payRows.map(rowToPay) : structuredClone(DEFAULT_STATE.payMethods)
     };
   }
 
-  let state = { livingCategories:[], irregularEnvelopes:[], transactions:[], fixedExpenses:[] };
+  let state = { livingCategories:[], irregularEnvelopes:[], transactions:[], fixedExpenses:[], payMethods:[] };
   let viewDate = new Date();
   let nextColorIdx = 0;
   const fmt = n => Math.round(n||0).toLocaleString('ko-KR');
@@ -437,8 +555,11 @@
     const totalSpent = livingTx.reduce((s,t)=>s+t.amount,0) + irregularTxThisMonth.reduce((s,t)=>s+t.amount,0);
     const totalPct = totalBudget ? Math.min(100, (totalSpent/totalBudget)*100) : 0;
 
+    const fixedTotal = state.fixedExpenses.reduce((s,f)=>s+f.amount,0);
+
     document.getElementById('totalSpent').textContent = fmt(totalSpent);
     document.getElementById('totalBudget').textContent = fmt(totalBudget);
+    document.getElementById('totalCombined').textContent = `(${fmt(totalBudget + fixedTotal)})`;
     document.getElementById('totalBarFill').style.width = totalPct + '%';
     document.getElementById('totalPct').textContent = Math.round((totalBudget? totalSpent/totalBudget*100:0)) + '% 사용';
     const remain = totalBudget - totalSpent;
@@ -447,8 +568,18 @@
     renderLiving(monthTx, livingTx);
     renderIrregular();
     renderFixed();
+    renderAnalysis(monthTx);
     renderTxList(monthTx);
-    if(currentView === 'calendar') renderCalendar(monthTx);
+    renderCalendar(monthTx);
+  }
+
+  function renderAnalysis(monthTx){
+    const income = monthTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const fixedTotal = state.fixedExpenses.reduce((s,f)=>s+f.amount,0);
+    const expense = monthTx.filter(t=>t.type==='living'||t.type==='irregular').reduce((s,t)=>s+t.amount,0) + fixedTotal;
+    document.getElementById('anaIncome').textContent = fmt(income) + '원';
+    document.getElementById('anaExpense').textContent = fmt(expense) + '원';
+    document.getElementById('anaNet').textContent = fmt(income - expense);
   }
 
   function renderLiving(monthTx, livingTx){
@@ -576,7 +707,7 @@
   function findEnvelopeName(type, categoryId){
     const list = type==='living' ? state.livingCategories : state.irregularEnvelopes;
     const found = list.find(c=>c.id===categoryId);
-    return found ? found.name : '(삭제된 봉투)';
+    return found ? found.name : '(삭제된 카테고리)';
   }
 
   let selectedPayFilter = null;
@@ -612,6 +743,16 @@
     renderPayTxList(monthTx);
   }
 
+  function fixedPayRowHtml(f){
+    return `<div class="tx-item" style="cursor:default;">
+      <div class="tx-left">
+        <span class="tx-merchant" style="color:var(--gold); font-weight:700;">${f.name}</span>
+        <span class="tx-meta">${f.payDay ? `매달 ${f.payDay}일` : '고정지출'} · 고정지출</span>
+      </div>
+      <span class="tx-amt" style="color:var(--gold); font-weight:700;">-${fmt(f.amount)}원</span>
+    </div>`;
+  }
+
   function renderPayTxList(monthTx){
     const listEl = document.getElementById('payTxList');
     const pagerEl = document.getElementById('payTxPager');
@@ -620,6 +761,7 @@
       pagerEl.style.display = 'none';
       return;
     }
+    const fixedRows = state.fixedExpenses.filter(f=>f.payMethod===selectedPayFilter);
     const filtered = monthTx.filter(t=>t.type!=='transfer' && t.payMethod===selectedPayFilter)
                              .sort((a,b)=>{
                                if(currentSort === 'date_asc') return (a.date+a.id).localeCompare(b.date+b.id);
@@ -628,8 +770,14 @@
                                return (b.date+b.id).localeCompare(a.date+a.id);
                              });
     listEl.style.display = 'flex';
-    if(!filtered.length){
+    if(!filtered.length && !fixedRows.length){
       listEl.innerHTML = `<div class="tx-empty">이번 달 ${selectedPayFilter} 지출 내역이 없어요.</div>`;
+      pagerEl.style.display = 'none';
+      return;
+    }
+    const fixedHtml = fixedRows.map(fixedPayRowHtml).join('');
+    if(!filtered.length){
+      listEl.innerHTML = fixedHtml;
       pagerEl.style.display = 'none';
       return;
     }
@@ -637,7 +785,7 @@
     if(payPage >= totalPages) payPage = totalPages - 1;
     if(payPage < 0) payPage = 0;
     const start = payPage * PAGE_SIZE;
-    listEl.innerHTML = filtered.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('');
+    listEl.innerHTML = fixedHtml + filtered.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('');
     attachTxRowHandlers(listEl);
     pagerEl.style.display = 'flex';
     document.getElementById('payPageLabel').textContent = `${payPage+1}/${totalPages}`;
@@ -650,7 +798,10 @@
 
   function renderTxList(monthTx){
     const txListEl = document.getElementById('txList');
-    const sorted = [...monthTx].sort((a,b)=>{
+    const filteredTx = currentView==='expense' ? monthTx.filter(t=>t.type==='living'||t.type==='irregular')
+                      : currentView==='income' ? monthTx.filter(t=>t.type==='income')
+                      : monthTx;
+    const sorted = [...filteredTx].sort((a,b)=>{
       if(currentSort === 'date_asc') return (a.date+a.id).localeCompare(b.date+b.id);
       if(currentSort === 'amount_desc') return b.amount - a.amount;
       if(currentSort === 'amount_asc') return a.amount - b.amount;
@@ -661,7 +812,10 @@
     if(txPage < 0) txPage = 0;
 
     if(sorted.length===0){
-      txListEl.innerHTML = `<div class="tx-empty">이번 달 지출 내역이 없어요.<br>아래 버튼으로 추가해보세요.</div>`;
+      const emptyMsg = currentView==='expense' ? '이번 달 지출 내역이 없어요.'
+                      : currentView==='income' ? '이번 달 수입 내역이 없어요.'
+                      : '이번 달 내역이 없어요.';
+      txListEl.innerHTML = `<div class="tx-empty">${emptyMsg}</div>`;
     }else{
       const start = txPage * PAGE_SIZE;
       txListEl.innerHTML = sorted.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('');
@@ -680,17 +834,27 @@
       return `<div class="tx-item" data-id="${t.id}">
         <div class="tx-left">
           <span class="tx-merchant">↔ ${fromEnv?fromEnv.name:'(삭제됨)'} → ${toCat?toCat.name:'(삭제됨)'}</span>
-          <span class="tx-meta">${d.getMonth()+1}.${d.getDate()} · 봉투 이체</span>
+          <span class="tx-meta">${d.getMonth()+1}.${d.getDate()} · 이체</span>
         </div>
         <span class="tx-amt">${fmt(t.amount)}원</span>
+      </div>`;
+    }
+    if(t.type === 'income'){
+      return `<div class="tx-item" data-id="${t.id}">
+        <div class="tx-left">
+          <span class="tx-merchant">${t.merchant || '(내용 없음)'}</span>
+          <span class="tx-meta">${d.getMonth()+1}.${d.getDate()} · 수입</span>
+        </div>
+        <span class="tx-amt" style="color:var(--ok);">+${fmt(t.amount)}원</span>
       </div>`;
     }
     const subLabel = t.subcat ? ` · ${t.subcat}` : '';
     const payLabel = t.payMethod ? ` · ${t.payMethod}` : '';
     const envName = findEnvelopeName(t.type, t.categoryId);
+    const recurDot = t.isRecurring ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:5px;"></span>` : '';
     return `<div class="tx-item" data-id="${t.id}">
       <div class="tx-left">
-        <span class="tx-merchant">${t.merchant || '(내용 없음)'}</span>
+        <span class="tx-merchant">${recurDot}${t.merchant || '(내용 없음)'}</span>
         <span class="tx-meta">${d.getMonth()+1}.${d.getDate()} · ${envName}${subLabel}${payLabel}</span>
       </div>
       <span class="tx-amt">-${fmt(t.amount)}원</span>
@@ -698,7 +862,7 @@
   }
 
   function attachTxRowHandlers(container){
-    container.querySelectorAll('.tx-item').forEach(row=>{
+    container.querySelectorAll('.tx-item[data-id]').forEach(row=>{
       row.addEventListener('click', ()=> openSheet(row.dataset.id));
     });
   }
@@ -706,7 +870,7 @@
   function renderCalendar(monthTx){
     const calGrid = document.getElementById('calGrid');
     const dayTotals = {};
-    monthTx.filter(t=>t.type!=='transfer').forEach(t=>{ dayTotals[t.date] = (dayTotals[t.date]||0) + t.amount; });
+    monthTx.filter(t=>t.type!=='transfer' && t.type!=='income').forEach(t=>{ dayTotals[t.date] = (dayTotals[t.date]||0) + t.amount; });
 
     const y = viewDate.getFullYear(), m = viewDate.getMonth();
     const firstDow = new Date(y,m,1).getDay();
@@ -728,6 +892,7 @@
     calGrid.querySelectorAll('.cal-day[data-date]').forEach(cell=>{
       cell.addEventListener('click', ()=> showCalDay(cell.dataset.date, monthTx));
     });
+    if(todayStr.slice(0,7) === monthKey(viewDate)) showCalDay(todayStr, monthTx);
   }
 
   function showCalDay(dateStr, monthTx){
@@ -760,25 +925,26 @@
   let selectedTo = null;
   let editingId = null;
   const toChoices = document.getElementById('toChoices');
-  const PAY_METHODS = ['현대카드','신한카드','국민카드','현금','카카오페이','계좌이체','기타'];
 
   const fieldMerchant = document.getElementById('fieldMerchant');
   const fieldCat = document.getElementById('fieldCat');
   const fieldSub = document.getElementById('fieldSub');
   const fieldPay = document.getElementById('fieldPay');
+  const fieldRecurring = document.getElementById('fieldRecurring');
+  const fRecurring = document.getElementById('fRecurring');
   const fieldTo = document.getElementById('fieldTo');
   const payChoices = document.getElementById('payChoices');
   let selectedPay = null;
 
   function buildPayChoices(){
     payChoices.innerHTML = '';
-    PAY_METHODS.forEach(name=>{
+    state.payMethods.forEach(p=>{
       const chip = document.createElement('div');
       chip.className = 'cat-chip';
-      chip.textContent = name;
-      if(name===selectedPay) chip.classList.add('active');
+      chip.textContent = p.name;
+      if(p.name===selectedPay) chip.classList.add('active');
       chip.addEventListener('click', ()=>{
-        selectedPay = (selectedPay===name) ? null : name;
+        selectedPay = (selectedPay===p.name) ? null : p.name;
         buildPayChoices();
       });
       payChoices.appendChild(chip);
@@ -787,14 +953,16 @@
 
   function applyTypeVisibility(){
     const isTransfer = selectedType === 'transfer';
+    const isIncome = selectedType === 'income';
     fieldMerchant.style.display = isTransfer ? 'none' : 'block';
-    fieldCat.style.display = isTransfer ? 'none' : 'block';
-    fieldSub.style.display = isTransfer ? 'none' : 'block';
-    fieldPay.style.display = isTransfer ? 'none' : 'block';
+    fieldCat.style.display = (isTransfer || isIncome) ? 'none' : 'block';
+    fieldSub.style.display = (isTransfer || isIncome) ? 'none' : 'block';
+    fieldPay.style.display = (isTransfer || isIncome) ? 'none' : 'block';
+    fieldRecurring.style.display = (isTransfer || isIncome) ? 'none' : 'flex';
     fieldTo.style.display = isTransfer ? 'block' : 'none';
     document.getElementById('sheetTitle').textContent = editingId
-      ? (isTransfer ? '이체 수정' : '지출 수정')
-      : (isTransfer ? '봉투 이체' : '지출 추가');
+      ? (isTransfer ? '이체 수정' : isIncome ? '수입 수정' : '지출 수정')
+      : (isTransfer ? '이체' : isIncome ? '수입 추가' : '지출 추가');
     submitTx.textContent = editingId ? '수정하기' : (isTransfer ? '이체하기' : '추가하기');
   }
 
@@ -822,6 +990,7 @@
       [...typeToggle.children].forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       selectedCat = null; selectedFrom = null; selectedTo = null; selectedPay = null;
+      fRecurring.checked = false;
       applyTypeVisibility();
       buildCatChoices();
       buildSubChoices();
@@ -879,6 +1048,8 @@
     const amt = parseInt(fAmount.value, 10);
     if(selectedType === 'transfer'){
       submitTx.disabled = !(amt > 0 && selectedTo && fDate.value && state.irregularEnvelopes.length>0);
+    }else if(selectedType === 'income'){
+      submitTx.disabled = !(amt > 0 && fDate.value);
     }else{
       submitTx.disabled = !(amt > 0 && selectedCat && fDate.value);
     }
@@ -902,12 +1073,17 @@
       selectedTo = editing ? editing.toId : null;
       selectedPay = null;
       fMerchant.value = editing ? (editing.merchant||'') : '';
+    }else if(selectedType === 'income'){
+      fMerchant.value = editing ? (editing.merchant||'') : '';
+      selectedCat = null;
+      selectedPay = null;
     }else{
       fMerchant.value = editing ? editing.merchant : '';
       fSubcat.value = editing ? (editing.subcat || '') : '';
       selectedCat = editing ? editing.categoryId : null;
       selectedPay = editing ? (editing.payMethod || null) : null;
     }
+    fRecurring.checked = editing ? !!editing.isRecurring : false;
 
     buildCatChoices();
     buildSubChoices();
@@ -947,6 +1123,13 @@
         merchant: fMerchant.value.trim() || `${fromEnv?fromEnv.name:''} → ${toCat?toCat.name:''}`,
         date: fDate.value
       };
+    }else if(selectedType === 'income'){
+      payload = {
+        amount: parseInt(fAmount.value,10),
+        merchant: fMerchant.value.trim(),
+        type: 'income',
+        date: fDate.value
+      };
     }else{
       payload = {
         amount: parseInt(fAmount.value,10),
@@ -955,7 +1138,8 @@
         categoryId: selectedCat,
         subcat: fSubcat.value.trim(),
         payMethod: selectedPay,
-        date: fDate.value
+        date: fDate.value,
+        isRecurring: fRecurring.checked
       };
     }
     submitTx.disabled = true;
@@ -966,10 +1150,10 @@
     if(editingId){
       const idx = state.transactions.findIndex(t=>t.id===editingId);
       if(idx>-1) state.transactions[idx] = { ...state.transactions[idx], ...payload };
-      showToast(selectedType==='transfer' ? '이체를 수정했어요' : '지출을 수정했어요');
+      showToast(selectedType==='transfer' ? '이체를 수정했어요' : selectedType==='income' ? '수입을 수정했어요' : '지출을 수정했어요');
     }else{
       state.transactions.push({ id, ...payload });
-      showToast(selectedType==='transfer' ? '이체를 완료했어요' : '지출을 추가했어요');
+      showToast(selectedType==='transfer' ? '이체를 완료했어요' : selectedType==='income' ? '수입을 추가했어요' : '지출을 추가했어요');
     }
     viewDate = new Date(payload.date);
     render();
@@ -978,19 +1162,21 @@
 
   deleteTx.addEventListener('click', async ()=>{
     if(!editingId) return;
+    const deletedType = (state.transactions.find(t=>t.id===editingId)||{}).type;
     const { error } = await sb.from('transactions').delete().eq('id', editingId);
     if(error){ showToast('삭제 실패, 다시 시도해주세요'); console.error(error); return; }
     state.transactions = state.transactions.filter(t=>t.id!==editingId);
     render();
     closeSheet();
-    showToast('지출을 삭제했어요');
+    showToast(deletedType==='transfer' ? '이체를 삭제했어요' : deletedType==='income' ? '수입을 삭제했어요' : '지출을 삭제했어요');
   });
 
-  // ── 설정(봉투 관리) 시트 ──
+  // ── 설정(카테고리 관리) 시트 ──
   const settingsSheet = document.getElementById('settingsSheet');
   const livingManage = document.getElementById('livingManage');
   const irregularManage = document.getElementById('irregularManage');
   const fixedManage = document.getElementById('fixedManage');
+  const payManage = document.getElementById('payManage');
 
   function nextColor(){
     const c = PALETTE[nextColorIdx % PALETTE.length];
@@ -1015,7 +1201,7 @@
       `;
       row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
         if(state.livingCategories.length<=1){ showToast('최소 1개는 있어야 해요'); return; }
-        if(!confirm(`"${cat.name}" 봉투를 삭제할까요? 기존 지출 기록은 남아있어요.`)) return;
+        if(!confirm(`"${cat.name}" 카테고리를 삭제할까요? 기존 지출 기록은 남아있어요.`)) return;
         const { error } = await sb.from('living_categories').delete().eq('id', cat.id);
         if(error){ showToast('삭제 실패'); console.error(error); return; }
         state.livingCategories = state.livingCategories.filter(c=>c.id!==cat.id);
@@ -1041,7 +1227,7 @@
         <div class="mr-line"><label>세부 목적</label><input class="mr-sub" data-field="subcats" value="${(env.subcats||[]).join(', ')}" placeholder="콤마로 구분"></div>
       `;
       row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
-        if(!confirm(`"${env.name}" 비정기 봉투를 삭제할까요? 기존 지출 기록은 남아있어요.`)) return;
+        if(!confirm(`"${env.name}" 비정기 카테고리를 삭제할까요? 기존 지출 기록은 남아있어요.`)) return;
         const { error } = await sb.from('irregular_envelopes').delete().eq('id', env.id);
         if(error){ showToast('삭제 실패'); console.error(error); return; }
         state.irregularEnvelopes = state.irregularEnvelopes.filter(c=>c.id!==env.id);
@@ -1067,7 +1253,7 @@
         <div class="mr-line"><label>결제수단</label>
           <select data-field="payMethod">
             <option value="">선택 안 함</option>
-            ${PAY_METHODS.map(m=>`<option value="${m}" ${f.payMethod===m?'selected':''}>${m}</option>`).join('')}
+            ${state.payMethods.map(p=>`<option value="${p.name}" ${f.payMethod===p.name?'selected':''}>${p.name}</option>`).join('')}
           </select>
         </div>
       `;
@@ -1082,27 +1268,68 @@
     });
   }
 
+  function buildPayManage(){
+    payManage.innerHTML = '';
+    state.payMethods.forEach(p=>{
+      const row = document.createElement('div');
+      row.className = 'manage-row';
+      row.dataset.id = p.id;
+      row.innerHTML = `
+        <div class="manage-row-top">
+          <input class="mr-name" data-field="name" value="${p.name}">
+          <button class="mr-del" data-action="del">✕</button>
+        </div>
+      `;
+      row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
+        if(!confirm(`"${p.name}" 결제수단을 삭제할까요?`)) return;
+        const { error } = await sb.from('pay_methods').delete().eq('id', p.id);
+        if(error){ showToast('삭제 실패'); console.error(error); return; }
+        state.payMethods = state.payMethods.filter(x=>x.id!==p.id);
+        buildPayManage();
+      });
+      payManage.appendChild(row);
+    });
+  }
+
   document.getElementById('addLiving').addEventListener('click', ()=>{
-    state.livingCategories.push({ id:'cat_'+Date.now().toString(36), name:'새 봉투', color:nextColor(), limit:0, subcats:[] });
+    state.livingCategories.push({ id:'cat_'+Date.now().toString(36), name:'새 카테고리', color:nextColor(), limit:0, subcats:[] });
     buildLivingManage();
   });
   document.getElementById('addIrregular').addEventListener('click', ()=>{
-    state.irregularEnvelopes.push({ id:'irr_'+Date.now().toString(36), name:'새 비정기 봉투', color:nextColor(), monthlyAmount:0, startMonth: monthKey(viewDate), subcats:[] });
+    state.irregularEnvelopes.push({ id:'irr_'+Date.now().toString(36), name:'새 비정기 카테고리', color:nextColor(), monthlyAmount:0, startMonth: monthKey(viewDate), subcats:[] });
     buildIrregularManage();
   });
   document.getElementById('addFixed').addEventListener('click', ()=>{
     state.fixedExpenses.push({ id:'fixed_'+Date.now().toString(36), name:'새 항목', amount:0, payDay:null });
     buildFixedManage();
   });
+  document.getElementById('addPay').addEventListener('click', ()=>{
+    state.payMethods.push({ id:'pay_'+Date.now().toString(36), name:'새 결제수단' });
+    buildPayManage();
+  });
 
   function openSettings(){
     buildLivingManage();
     buildIrregularManage();
     buildFixedManage();
+    buildPayManage();
     backdrop.classList.add('show');
     settingsSheet.classList.add('show');
   }
-  document.getElementById('openSettings').addEventListener('click', openSettings);
+  document.querySelectorAll('.nav-settings-btn').forEach(btn=> btn.addEventListener('click', openSettings));
+
+  // ── 반응형 홈/내역 nav (좁은 화면 하단 탭바 / 넓은 화면 좌측 레일) ──
+  const appColsEl = document.getElementById('appCols');
+  function setActiveCol(col){
+    appColsEl.dataset.active = col;
+    document.querySelectorAll('.bn-item[data-col], .sr-item[data-col]').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.col === col);
+    });
+    document.getElementById('openAdd').style.display = (col === 'calendar') ? 'flex' : 'none';
+  }
+  document.querySelectorAll('.bn-item[data-col], .sr-item[data-col]').forEach(btn=>{
+    btn.addEventListener('click', ()=> setActiveCol(btn.dataset.col));
+  });
 
   document.getElementById('saveSettings').addEventListener('click', async ()=>{
     livingManage.querySelectorAll('.manage-row').forEach(row=>{
@@ -1128,23 +1355,29 @@
       f.payDay = (pd>=1 && pd<=31) ? pd : null;
       f.payMethod = row.querySelector('[data-field="payMethod"]').value || null;
     });
+    payManage.querySelectorAll('.manage-row').forEach(row=>{
+      const p = state.payMethods.find(x=>x.id===row.dataset.id);
+      if(!p) return;
+      p.name = row.querySelector('[data-field="name"]').value.trim() || p.name;
+    });
     const { error: e1 } = await sb.from('living_categories').upsert(state.livingCategories.map((c,i)=>livingCatToRow(c,i)));
     const { error: e2 } = await sb.from('irregular_envelopes').upsert(state.irregularEnvelopes.map((e,i)=>irregularToRow(e,i)));
     const { error: e3 } = await sb.from('fixed_expenses').upsert(state.fixedExpenses.map((f,i)=>fixedToRow(f,i)));
-    if(e1||e2||e3){ showToast('저장 실패, 다시 시도해주세요'); console.error(e1,e2,e3); return; }
+    const { error: e4 } = await sb.from('pay_methods').upsert(state.payMethods.map((p,i)=>payToRow(p,i)));
+    if(e1||e2||e3||e4){ showToast('저장 실패, 다시 시도해주세요'); console.error(e1,e2,e3,e4); return; }
     render();
     closeSheet();
-    showToast('봉투 설정을 저장했어요');
+    showToast('카테고리 설정을 저장했어요');
   });
 
-  // ── 뷰 전환 ──
-  let currentView = 'list';
+  // ── 뷰 전환 (분석 탭 내부: 지출/수입/합계/결제수단) ──
+  let currentView = 'all';
   let currentSort = 'date_desc';
-  const tabList = document.getElementById('tabList');
-  const tabCalendar = document.getElementById('tabCalendar');
+  const tabExpense = document.getElementById('tabExpense');
+  const tabIncome = document.getElementById('tabIncome');
+  const tabAll = document.getElementById('tabAll');
   const tabPay = document.getElementById('tabPay');
   const txListEl = document.getElementById('txList');
-  const calendarWrap = document.getElementById('calendarWrap');
   const sortSelect = document.getElementById('sortSelect');
 
   sortSelect.addEventListener('change', ()=>{
@@ -1176,43 +1409,37 @@
 
   function switchView(view){
     currentView = view;
-    [tabList, tabCalendar, tabPay].forEach(t=>t.classList.remove('active'));
+    [tabExpense, tabIncome, tabAll, tabPay].forEach(t=>t.classList.remove('active'));
     txListEl.style.display = 'none';
-    calendarWrap.style.display = 'none';
-    sortSelect.style.display = 'none';
+    document.getElementById('txPager').style.display = 'none';
     document.getElementById('payMethodSummary').style.display = 'none';
+    document.getElementById('payTxList').style.display = 'none';
+    document.getElementById('payTxPager').style.display = 'none';
 
-    if(view==='list'){
-      tabList.classList.add('active');
-      txListEl.style.display = 'flex';
-      sortSelect.style.display = 'block';
-    }else if(view==='calendar'){
-      tabCalendar.classList.add('active');
-      calendarWrap.style.display = 'block';
-      document.getElementById('calDayList').style.display = 'none';
-      const monthTx = state.transactions.filter(t=>inViewMonth(t.date));
-      renderCalendar(monthTx);
-    }else if(view==='pay'){
+    if(view==='pay'){
       tabPay.classList.add('active');
-      sortSelect.style.display = 'block';
       document.getElementById('payMethodSummary').style.display = 'flex';
       renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date)));
+    }else{
+      ({expense:tabExpense, income:tabIncome, all:tabAll}[view]).classList.add('active');
+      txListEl.style.display = 'flex';
+      document.getElementById('txPager').style.display = 'flex';
+      renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
     }
   }
-  tabList.addEventListener('click', ()=>switchView('list'));
-  tabCalendar.addEventListener('click', ()=>switchView('calendar'));
+  tabExpense.addEventListener('click', ()=>switchView('expense'));
+  tabIncome.addEventListener('click', ()=>switchView('income'));
+  tabAll.addEventListener('click', ()=>switchView('all'));
   tabPay.addEventListener('click', ()=>switchView('pay'));
 
   document.getElementById('prevMonth').addEventListener('click', ()=>{
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
     render();
-    if(currentView==='calendar'){ document.getElementById('calDayList').style.display='none'; renderCalendar(state.transactions.filter(t=>inViewMonth(t.date))); }
     if(currentView==='pay'){ renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date))); }
   });
   document.getElementById('nextMonth').addEventListener('click', ()=>{
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
     render();
-    if(currentView==='calendar'){ document.getElementById('calDayList').style.display='none'; renderCalendar(state.transactions.filter(t=>inViewMonth(t.date))); }
     if(currentView==='pay'){ renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date))); }
   });
 
@@ -1226,11 +1453,55 @@
   document.getElementById('fixedBody').classList.add('collapsed');
   document.querySelector('[data-toggle="fixedBody"]').classList.add('collapsed');
 
-  (async function init(){
+  // ── 로그인 ──
+  const authScreen = document.getElementById('authScreen');
+  const shellEl = document.getElementById('shell');
+  const authEmail = document.getElementById('authEmail');
+  const authPassword = document.getElementById('authPassword');
+  const authError = document.getElementById('authError');
+
+  function showAuthError(msg){
+    authError.textContent = msg;
+    authError.style.display = 'block';
+  }
+
+  let appStarted = false;
+  async function startApp(){
+    if(appStarted) return;
+    appStarted = true;
+    authScreen.style.display = 'none';
+    shellEl.style.display = 'flex';
+    document.getElementById('bottomNav').style.display = '';
     state = await loadState();
     nextColorIdx = (state.livingCategories.length + state.irregularEnvelopes.length) % PALETTE.length;
     buildCatChoices();
     render();
+    setActiveCol('calendar');
+  }
+
+  document.getElementById('authSignIn').addEventListener('click', async ()=>{
+    authError.style.display = 'none';
+    const { error } = await sb.auth.signInWithPassword({ email: authEmail.value.trim(), password: authPassword.value });
+    if(error) showAuthError('로그인 실패: ' + error.message);
+  });
+  document.getElementById('authSignUp').addEventListener('click', async ()=>{
+    authError.style.display = 'none';
+    const { error } = await sb.auth.signUp({ email: authEmail.value.trim(), password: authPassword.value });
+    if(error) showAuthError('회원가입 실패: ' + error.message);
+    else showAuthError('가입 완료! 이메일 인증이 필요하면 확인 후 로그인해주세요.');
+  });
+  document.getElementById('signOutBtn').addEventListener('click', async ()=>{
+    await sb.auth.signOut();
+  });
+
+  sb.auth.onAuthStateChange((event)=>{
+    if(event === 'SIGNED_IN') startApp();
+    if(event === 'SIGNED_OUT') location.reload();
+  });
+
+  (async function init(){
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session){ await startApp(); }
   })();
 })();
 </script>
