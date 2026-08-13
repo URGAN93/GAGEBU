@@ -380,7 +380,7 @@
     <label>가맹점 / 내용</label>
     <input type="text" id="fMerchant" placeholder="예) 스타벅스">
   </div>
-  <div class="field">
+  <div class="field" id="fieldDate">
     <label>날짜</label>
     <input type="date" id="fDate">
   </div>
@@ -397,9 +397,9 @@
     <label>결제수단 <span style="font-weight:400; opacity:0.6;">(선택)</span></label>
     <div class="cat-choices" id="payChoices"></div>
   </div>
-  <div class="field" id="fieldRecurring" style="display:flex; align-items:center; justify-content:space-between;">
-    <label style="margin:0;">반복 (고정지출성 지출)</label>
-    <input type="checkbox" id="fRecurring">
+  <div class="field" id="fieldInstallment">
+    <label>할부 <span style="font-weight:400; opacity:0.6;">(선택, 개월 · 비우면 일시불)</span></label>
+    <input type="number" id="fInstallment" min="1" max="36" placeholder="일시불">
   </div>
   <div class="field" id="fieldTo" style="display:none;">
     <label>어디로 (생활 카테고리)</label>
@@ -451,9 +451,11 @@
   document.getElementById('openAdd').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'none';
 
+  function todayKST(){
+    return new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+  }
   function nowMonthKey(){
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    return todayKST().slice(0,7);
   }
 
   const DEFAULT_STATE = {
@@ -485,10 +487,10 @@
   function livingCatToRow(c, idx){ return { id:c.id, name:c.name, color:c.color, limit_amount:c.limit, subcats:c.subcats||[], sort_order:idx }; }
   function rowToIrregular(r){ return { id:r.id, name:r.name, color:r.color, monthlyAmount:r.monthly_amount, startMonth:r.start_month, subcats:r.subcats||[] }; }
   function irregularToRow(e, idx){ return { id:e.id, name:e.name, color:e.color, monthly_amount:e.monthlyAmount, start_month:e.startMonth, subcats:e.subcats||[], sort_order:idx }; }
-  function rowToTx(r){ return { id:r.id, type:r.type, amount:r.amount, merchant:r.merchant, categoryId:r.category_id, subcat:r.subcat, payMethod:r.pay_method, fromId:r.from_id, toId:r.to_id, date:r.date, isRecurring:r.is_recurring||false }; }
-  function txToRow(t){ return { id:t.id, type:t.type, amount:t.amount, merchant:t.merchant||null, category_id:t.categoryId||null, subcat:t.subcat||null, pay_method:t.payMethod||null, from_id:t.fromId||null, to_id:t.toId||null, date:t.date, is_recurring: !!t.isRecurring }; }
-  function rowToFixed(r){ return { id:r.id, name:r.name, amount:r.amount, payDay:r.pay_day, payMethod:r.pay_method }; }
-  function fixedToRow(f, idx){ return { id:f.id, name:f.name, amount:f.amount, pay_day:f.payDay||null, pay_method:f.payMethod||null, sort_order:idx }; }
+  function rowToTx(r){ return { id:r.id, type:r.type, amount:r.amount, merchant:r.merchant, categoryId:r.category_id, subcat:r.subcat, payMethod:r.pay_method, fromId:r.from_id, toId:r.to_id, date:r.date, isRecurring:r.is_recurring||false, installmentCount:r.installment_count||null, installmentOverrides:r.installment_overrides||null }; }
+  function txToRow(t){ return { id:t.id, type:t.type, amount:t.amount, merchant:t.merchant||null, category_id:t.categoryId||null, subcat:t.subcat||null, pay_method:t.payMethod||null, from_id:t.fromId||null, to_id:t.toId||null, date:t.date, is_recurring: !!t.isRecurring, installment_count: t.installmentCount||null, installment_overrides: t.installmentOverrides||null }; }
+  function rowToFixed(r){ return { id:r.id, name:r.name, amount:r.amount, payDay:r.pay_day, payMethod:r.pay_method, installmentCount:r.installment_count||null, installmentStartMonth:r.installment_start_month||null, endMonth:r.end_month||null }; }
+  function fixedToRow(f, idx){ return { id:f.id, name:f.name, amount:f.amount, pay_day:f.payDay||null, pay_method:f.payMethod||null, sort_order:idx, installment_count:f.installmentCount||null, installment_start_month:f.installmentStartMonth||null, end_month:f.endMonth||null }; }
   function rowToPay(r){ return { id:r.id, name:r.name }; }
   function payToRow(p, idx){ return { id:p.id, name:p.name, sort_order:idx }; }
 
@@ -522,7 +524,8 @@
   }
 
   let state = { livingCategories:[], irregularEnvelopes:[], transactions:[], fixedExpenses:[], payMethods:[] };
-  let viewDate = new Date();
+  let viewDate = (function(){ const [y,m,d] = todayKST().split('-').map(Number); return new Date(y, m-1, d); })();
+  let selectedCalDate = null;
   let nextColorIdx = 0;
   const fmt = n => Math.round(n||0).toLocaleString('ko-KR');
   function fmtMan(n){
@@ -530,7 +533,6 @@
     return (man < 10 ? man.toFixed(1) : Math.round(man)) + '만';
   }
   function monthKey(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
-  function inViewMonth(dateStr){ return dateStr.slice(0,7) === monthKey(viewDate); }
   function statusColor(pct){
     if(pct >= 100) return getComputedStyle(document.documentElement).getPropertyValue('--over').trim();
     if(pct >= 80) return getComputedStyle(document.documentElement).getPropertyValue('--warn').trim();
@@ -543,11 +545,86 @@
     return Math.max(0, diff);
   }
 
+  function addMonths(monthKeyStr, delta){
+    const [y,m] = monthKeyStr.split('-').map(Number);
+    const total = (m - 1) + delta;
+    const ny = y + Math.floor(total/12);
+    const nm = ((total % 12) + 12) % 12 + 1;
+    return `${ny}-${String(nm).padStart(2,'0')}`;
+  }
+
+  function irregularContributions(envId, fromMonth, toMonth){
+    const records = [];
+    state.transactions.forEach(t=>{
+      if(t.type!=='irregular' || t.categoryId!==envId) return;
+      const subcat = t.subcat && t.subcat.trim() ? t.subcat.trim() : '기타';
+      if(t.installmentCount && t.installmentCount > 1){
+        const originMonth = t.date.slice(0,7);
+        for(let idx=1; idx<=t.installmentCount; idx++){
+          const mk = addMonths(originMonth, idx-1);
+          if(mk < fromMonth || mk > toMonth) continue;
+          const override = t.installmentOverrides && t.installmentOverrides[mk];
+          const amount = (override != null) ? override : Math.round(t.amount / t.installmentCount);
+          records.push({ month: mk, amount, subcat });
+        }
+      }else{
+        const mk = t.date.slice(0,7);
+        if(mk < fromMonth || mk > toMonth) return;
+        records.push({ month: mk, amount: t.amount, subcat });
+      }
+    });
+    return records;
+  }
+
+  function fixedInstallmentIndex(f, viewKey){
+    if(!f.installmentCount) return null;
+    return elapsedMonths(f.installmentStartMonth, viewKey);
+  }
+  function activeFixedExpenses(viewKey){
+    return state.fixedExpenses.filter(f=>{
+      if(f.endMonth && viewKey >= f.endMonth) return false;
+      if(!f.installmentCount) return true;
+      const idx = fixedInstallmentIndex(f, viewKey);
+      return idx >= 1 && idx <= f.installmentCount;
+    });
+  }
+  function isFixedActiveNow(f){
+    const vKey = nowMonthKey();
+    if(f.endMonth && vKey >= f.endMonth) return false;
+    if(!f.installmentCount) return true;
+    const idx = fixedInstallmentIndex(f, vKey);
+    return idx >= 1 && idx <= f.installmentCount;
+  }
+
+  function expandMonthTx(viewKey){
+    const result = [];
+    state.transactions.forEach(t=>{
+      if(t.installmentCount && t.installmentCount > 1){
+        const startKey = t.date.slice(0,7);
+        const idx = elapsedMonths(startKey, viewKey);
+        if(idx < 1 || idx > t.installmentCount) return;
+        const override = t.installmentOverrides && t.installmentOverrides[viewKey];
+        const amt = (override != null) ? override : Math.round(t.amount / t.installmentCount);
+        let virtualDate = t.date;
+        if(idx > 1){
+          const [vy,vm] = viewKey.split('-').map(Number);
+          const lastDay = new Date(vy, vm, 0).getDate();
+          const day = Math.min(parseInt(t.date.slice(8,10),10), lastDay);
+          virtualDate = `${viewKey}-${String(day).padStart(2,'0')}`;
+        }
+        result.push({ ...t, amount: amt, installmentIndex: idx, date: virtualDate });
+      }else if(t.date.slice(0,7) === viewKey){
+        result.push(t);
+      }
+    });
+    return result;
+  }
+
   function render(){
     document.getElementById('yearLabel').textContent = viewDate.getFullYear() + '년';
     document.getElementById('monthLabel').textContent = (viewDate.getMonth()+1) + '월';
 
-    const monthTx = state.transactions.filter(t => inViewMonth(t.date));
+    const monthTx = expandMonthTx(monthKey(viewDate));
     const livingTx = monthTx.filter(t=>t.type==='living');
     const irregularTxThisMonth = monthTx.filter(t=>t.type==='irregular');
     const totalBudget = state.livingCategories.reduce((s,c)=>s+c.limit,0)
@@ -555,7 +632,7 @@
     const totalSpent = livingTx.reduce((s,t)=>s+t.amount,0) + irregularTxThisMonth.reduce((s,t)=>s+t.amount,0);
     const totalPct = totalBudget ? Math.min(100, (totalSpent/totalBudget)*100) : 0;
 
-    const fixedTotal = state.fixedExpenses.reduce((s,f)=>s+f.amount,0);
+    const fixedTotal = activeFixedExpenses(monthKey(viewDate)).reduce((s,f)=>s+f.amount,0);
 
     document.getElementById('totalSpent').textContent = fmt(totalSpent);
     document.getElementById('totalBudget').textContent = fmt(totalBudget);
@@ -575,7 +652,7 @@
 
   function renderAnalysis(monthTx){
     const income = monthTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-    const fixedTotal = state.fixedExpenses.reduce((s,f)=>s+f.amount,0);
+    const fixedTotal = activeFixedExpenses(monthKey(viewDate)).reduce((s,f)=>s+f.amount,0);
     const expense = monthTx.filter(t=>t.type==='living'||t.type==='irregular').reduce((s,t)=>s+t.amount,0) + fixedTotal;
     document.getElementById('anaIncome').textContent = fmt(income) + '원';
     document.getElementById('anaExpense').textContent = fmt(expense) + '원';
@@ -635,22 +712,16 @@
     state.irregularEnvelopes.forEach(env=>{
       const months = elapsedMonths(env.startMonth, vKey);
       const credited = env.monthlyAmount * months;
-      const spentAll = state.transactions
-        .filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) >= env.startMonth && t.date.slice(0,7) <= vKey)
-        .reduce((s,t)=>s+t.amount,0);
+      const contributions = irregularContributions(env.id, env.startMonth, vKey);
+      const spentAll = contributions.reduce((s,r)=>s+r.amount,0);
       const transferredOutAll = state.transactions
         .filter(t=>t.type==='transfer' && t.fromId===env.id && t.date.slice(0,7) >= env.startMonth && t.date.slice(0,7) <= vKey)
         .reduce((s,t)=>s+t.amount,0);
-      const spentThisMonth = state.transactions
-        .filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) === vKey)
-        .reduce((s,t)=>s+t.amount,0);
+      const spentThisMonth = contributions.filter(r=>r.month===vKey).reduce((s,r)=>s+r.amount,0);
       const balance = credited - spentAll - transferredOutAll;
 
       const subTotals = {};
-      state.transactions.filter(t=>t.type==='irregular' && t.categoryId===env.id && t.date.slice(0,7) >= env.startMonth).forEach(t=>{
-        const key = t.subcat && t.subcat.trim() ? t.subcat.trim() : '기타';
-        subTotals[key] = (subTotals[key]||0) + t.amount;
-      });
+      contributions.forEach(r=>{ subTotals[r.subcat] = (subTotals[r.subcat]||0) + r.amount; });
       const subEntries = Object.entries(subTotals).sort((a,b)=>b[1]-a[1]);
       let subHtml = subEntries.length ? subEntries.map(([name,amt])=>
         `<div class="env-sub-row"><span>${name}</span><span>${fmt(amt)}원</span></div>`
@@ -685,21 +756,27 @@
   function renderFixed(){
     const listEl = document.getElementById('fixedList');
     const totalEl = document.getElementById('fixedTotal');
-    const items = state.fixedExpenses;
+    const vKey = monthKey(viewDate);
+    const items = activeFixedExpenses(vKey);
     if(!items.length){
       listEl.innerHTML = `<div class="tx-empty">등록된 고정지출이 없어요.</div>`;
       totalEl.innerHTML = '';
       return;
     }
-    listEl.innerHTML = items.map(f=>`
+    listEl.innerHTML = items.map(f=>{
+      const idx = fixedInstallmentIndex(f, vKey);
+      const badge = idx ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:10px; background:rgba(185,138,46,0.15); color:var(--gold); font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:700;">${idx}/${f.installmentCount}</span>` : '';
+      const nameStyle = idx ? ` style="color:var(--gold); font-weight:700;"` : '';
+      return `
       <div class="tx-item">
         <div class="tx-left">
-          <span class="tx-merchant">${f.name}</span>
-          <span class="tx-meta">${f.payDay ? `매달 ${f.payDay}일` : '결제일 미지정'}${f.payMethod ? ` · ${f.payMethod}` : ''}</span>
+          <span class="tx-merchant"${nameStyle}>${f.name}${badge}</span>
+          <span class="tx-meta">고정지출${f.payMethod ? ` · ${f.payMethod}` : ''}</span>
         </div>
         <span class="tx-amt">${fmt(f.amount)}원</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
     const total = items.reduce((s,f)=>s+f.amount,0);
     totalEl.innerHTML = `<span>총 ${items.length}건</span><span style="font-weight:700; opacity:1;">합계 ${fmt(total)}원</span>`;
   }
@@ -710,6 +787,12 @@
     return found ? found.name : '(삭제된 카테고리)';
   }
 
+  function findCatPool(catId){
+    if(state.livingCategories.some(c=>c.id===catId)) return 'living';
+    if(state.irregularEnvelopes.some(c=>c.id===catId)) return 'irregular';
+    return null;
+  }
+
   let selectedPayFilter = null;
   let payPage = 0;
 
@@ -718,7 +801,7 @@
     const spend = monthTx.filter(t=>t.type!=='transfer' && t.payMethod);
     const totals = {};
     spend.forEach(t=>{ totals[t.payMethod] = (totals[t.payMethod]||0) + t.amount; });
-    state.fixedExpenses.forEach(f=>{
+    activeFixedExpenses(monthKey(viewDate)).forEach(f=>{
       if(f.payMethod) totals[f.payMethod] = (totals[f.payMethod]||0) + f.amount;
     });
     const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
@@ -744,10 +827,12 @@
   }
 
   function fixedPayRowHtml(f){
+    const idx = fixedInstallmentIndex(f, monthKey(viewDate));
+    const badge = idx ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:10px; background:rgba(185,138,46,0.15); color:var(--gold); font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:700;">${idx}/${f.installmentCount}</span>` : '';
     return `<div class="tx-item" style="cursor:default;">
       <div class="tx-left">
-        <span class="tx-merchant" style="color:var(--gold); font-weight:700;">${f.name}</span>
-        <span class="tx-meta">${f.payDay ? `매달 ${f.payDay}일` : '고정지출'} · 고정지출</span>
+        <span class="tx-merchant" style="color:var(--gold); font-weight:700;">${f.name}${badge}</span>
+        <span class="tx-meta">고정지출${f.payMethod ? ` · ${f.payMethod}` : ''}</span>
       </div>
       <span class="tx-amt" style="color:var(--gold); font-weight:700;">-${fmt(f.amount)}원</span>
     </div>`;
@@ -801,6 +886,8 @@
     const filteredTx = currentView==='expense' ? monthTx.filter(t=>t.type==='living'||t.type==='irregular')
                       : currentView==='income' ? monthTx.filter(t=>t.type==='income')
                       : monthTx;
+    const fixedRows = (currentView==='expense' || currentView==='all') ? activeFixedExpenses(monthKey(viewDate)) : [];
+    const fixedHtml = fixedRows.map(fixedPayRowHtml).join('');
     const sorted = [...filteredTx].sort((a,b)=>{
       if(currentSort === 'date_asc') return (a.date+a.id).localeCompare(b.date+b.id);
       if(currentSort === 'amount_desc') return b.amount - a.amount;
@@ -811,14 +898,31 @@
     if(txPage >= totalPages) txPage = totalPages - 1;
     if(txPage < 0) txPage = 0;
 
-    if(sorted.length===0){
+    if(sorted.length===0 && !fixedRows.length){
       const emptyMsg = currentView==='expense' ? '이번 달 지출 내역이 없어요.'
                       : currentView==='income' ? '이번 달 수입 내역이 없어요.'
                       : '이번 달 내역이 없어요.';
       txListEl.innerHTML = `<div class="tx-empty">${emptyMsg}</div>`;
     }else{
       const start = txPage * PAGE_SIZE;
-      txListEl.innerHTML = sorted.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('');
+      const plainLabel = name => `<div style="padding:10px 16px 4px 16px; font-size:11px; font-weight:700; color:var(--ink-soft); opacity:0.55; letter-spacing:0.5px;">${name}</div>`;
+      const showLabels = fixedRows.length && sorted.length;
+      const fixedBlock = fixedRows.length ? (
+        showLabels
+          ? `<div class="section-label${fixedSectionCollapsed?' collapsed':''}" id="fixedSectionLabel" style="margin:0; padding:10px 16px 4px 16px; font-size:11px; letter-spacing:0.5px;"><span>고정지출</span><span class="chevron">▾</span></div>
+             <div class="section-body${fixedSectionCollapsed?' collapsed':''}" id="fixedSectionBody">${fixedHtml}</div>`
+          : fixedHtml
+      ) : '';
+      const txBlock = sorted.length ? (showLabels ? plainLabel('이번 달 내역') : '') + sorted.slice(start, start+PAGE_SIZE).map(t=>txRowHtml(t)).join('') : '';
+      txListEl.innerHTML = fixedBlock + txBlock;
+      const fixedLabelEl = document.getElementById('fixedSectionLabel');
+      if(fixedLabelEl){
+        fixedLabelEl.addEventListener('click', ()=>{
+          fixedSectionCollapsed = !fixedSectionCollapsed;
+          fixedLabelEl.classList.toggle('collapsed', fixedSectionCollapsed);
+          document.getElementById('fixedSectionBody').classList.toggle('collapsed', fixedSectionCollapsed);
+        });
+      }
     }
     document.getElementById('txPageLabel').textContent = `${txPage+1}/${totalPages}`;
     document.getElementById('txPrevPage').disabled = txPage <= 0;
@@ -851,10 +955,13 @@
     const subLabel = t.subcat ? ` · ${t.subcat}` : '';
     const payLabel = t.payMethod ? ` · ${t.payMethod}` : '';
     const envName = findEnvelopeName(t.type, t.categoryId);
-    const recurDot = t.isRecurring ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:5px;"></span>` : '';
-    return `<div class="tx-item" data-id="${t.id}">
+    const isInstallment = !!t.installmentIndex;
+    const installBadge = isInstallment ? `<span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:10px; background:rgba(19,42,51,0.08); color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:700;">${t.installmentIndex}/${t.installmentCount}</span>` : '';
+    const instMonthAttr = (isInstallment && t.installmentIndex > 1) ? ` data-inst-month="${t.date.slice(0,7)}"` : '';
+    const merchantStyle = isInstallment ? ` style="font-weight:700;"` : '';
+    return `<div class="tx-item" data-id="${t.id}"${instMonthAttr}>
       <div class="tx-left">
-        <span class="tx-merchant">${recurDot}${t.merchant || '(내용 없음)'}</span>
+        <span class="tx-merchant"${merchantStyle}>${t.merchant || '(내용 없음)'}${installBadge}</span>
         <span class="tx-meta">${d.getMonth()+1}.${d.getDate()} · ${envName}${subLabel}${payLabel}</span>
       </div>
       <span class="tx-amt">-${fmt(t.amount)}원</span>
@@ -863,7 +970,7 @@
 
   function attachTxRowHandlers(container){
     container.querySelectorAll('.tx-item[data-id]').forEach(row=>{
-      row.addEventListener('click', ()=> openSheet(row.dataset.id));
+      row.addEventListener('click', ()=> openSheet(row.dataset.id, row.dataset.instMonth || null));
     });
   }
 
@@ -875,7 +982,7 @@
     const y = viewDate.getFullYear(), m = viewDate.getMonth();
     const firstDow = new Date(y,m,1).getDay();
     const daysInMonth = new Date(y,m+1,0).getDate();
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr = todayKST();
 
     let html = ['일','월','화','수','목','금','토'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
     for(let i=0;i<firstDow;i++) html += `<div class="cal-day empty"></div>`;
@@ -896,6 +1003,7 @@
   }
 
   function showCalDay(dateStr, monthTx){
+    selectedCalDate = dateStr;
     const dayList = document.getElementById('calDayList');
     const dayTx = monthTx.filter(t=>t.date===dateStr);
     dayList.style.display='block';
@@ -924,15 +1032,17 @@
   let selectedFrom = null;
   let selectedTo = null;
   let editingId = null;
+  let editingInstMonth = null;
   const toChoices = document.getElementById('toChoices');
 
   const fieldMerchant = document.getElementById('fieldMerchant');
   const fieldCat = document.getElementById('fieldCat');
   const fieldSub = document.getElementById('fieldSub');
   const fieldPay = document.getElementById('fieldPay');
-  const fieldRecurring = document.getElementById('fieldRecurring');
-  const fRecurring = document.getElementById('fRecurring');
+  const fieldInstallment = document.getElementById('fieldInstallment');
+  const fInstallment = document.getElementById('fInstallment');
   const fieldTo = document.getElementById('fieldTo');
+  const fieldDate = document.getElementById('fieldDate');
   const payChoices = document.getElementById('payChoices');
   let selectedPay = null;
 
@@ -954,12 +1064,28 @@
   function applyTypeVisibility(){
     const isTransfer = selectedType === 'transfer';
     const isIncome = selectedType === 'income';
+    if(editingInstMonth){
+      typeToggle.style.display = 'none';
+      fieldMerchant.style.display = 'none';
+      fieldCat.style.display = 'none';
+      fieldSub.style.display = 'none';
+      fieldPay.style.display = 'none';
+      fieldInstallment.style.display = 'none';
+      fieldTo.style.display = 'none';
+      fieldDate.style.display = 'none';
+      deleteTx.style.display = 'none';
+      document.getElementById('sheetTitle').textContent = `${editingInstMonth.slice(5,7).replace(/^0/,'')}월 할부 회차 금액 수정`;
+      submitTx.textContent = '수정하기';
+      return;
+    }
+    typeToggle.style.display = 'flex';
     fieldMerchant.style.display = isTransfer ? 'none' : 'block';
     fieldCat.style.display = (isTransfer || isIncome) ? 'none' : 'block';
     fieldSub.style.display = (isTransfer || isIncome) ? 'none' : 'block';
     fieldPay.style.display = (isTransfer || isIncome) ? 'none' : 'block';
-    fieldRecurring.style.display = (isTransfer || isIncome) ? 'none' : 'flex';
+    fieldInstallment.style.display = (isTransfer || isIncome) ? 'none' : 'block';
     fieldTo.style.display = isTransfer ? 'block' : 'none';
+    fieldDate.style.display = 'block';
     document.getElementById('sheetTitle').textContent = editingId
       ? (isTransfer ? '이체 수정' : isIncome ? '수입 수정' : '지출 수정')
       : (isTransfer ? '이체' : isIncome ? '수입 추가' : '지출 추가');
@@ -990,7 +1116,6 @@
       [...typeToggle.children].forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       selectedCat = null; selectedFrom = null; selectedTo = null; selectedPay = null;
-      fRecurring.checked = false;
       applyTypeVisibility();
       buildCatChoices();
       buildSubChoices();
@@ -1001,14 +1126,19 @@
   });
 
   function currentEnvelopeList(){
-    return selectedType==='living' ? state.livingCategories : state.irregularEnvelopes;
+    return selectedType==='living' ? [...state.livingCategories, ...state.irregularEnvelopes] : state.irregularEnvelopes;
   }
 
   function buildCatChoices(){
     catChoices.innerHTML = '';
+    const isCombined = selectedType==='living';
     currentEnvelopeList().forEach(cat=>{
       const chip = document.createElement('div');
       chip.className = 'cat-chip';
+      if(isCombined && state.irregularEnvelopes.some(e=>e.id===cat.id)){
+        chip.style.borderStyle = 'dashed';
+        chip.title = '비정기 카테고리';
+      }
       chip.textContent = cat.name;
       if(cat.id===selectedCat) chip.classList.add('active');
       chip.addEventListener('click', ()=>{
@@ -1046,7 +1176,9 @@
 
   function validateForm(){
     const amt = parseInt(fAmount.value, 10);
-    if(selectedType === 'transfer'){
+    if(editingInstMonth){
+      submitTx.disabled = !(amt > 0);
+    }else if(selectedType === 'transfer'){
       submitTx.disabled = !(amt > 0 && selectedTo && fDate.value && state.irregularEnvelopes.length>0);
     }else if(selectedType === 'income'){
       submitTx.disabled = !(amt > 0 && fDate.value);
@@ -1056,18 +1188,32 @@
   }
   [fAmount, fDate].forEach(el=> el.addEventListener('input', validateForm));
 
-  function openSheet(txId){
+  function openSheet(txId, instMonth){
     editingId = txId || null;
+    editingInstMonth = instMonth || null;
     const editing = editingId ? state.transactions.find(t=>t.id===editingId) : null;
+
+    if(editing && editingInstMonth){
+      selectedType = editing.type;
+      applyTypeVisibility();
+      const override = editing.installmentOverrides && editing.installmentOverrides[editingInstMonth];
+      fAmount.value = (override != null) ? override : Math.round(editing.amount / editing.installmentCount);
+      validateForm();
+      backdrop.classList.add('show');
+      sheet.classList.add('show');
+      setTimeout(()=>fAmount.focus(), 250);
+      return;
+    }
 
     deleteTx.style.display = editing ? 'block' : 'none';
 
-    selectedType = editing ? editing.type : 'living';
+    selectedType = editing ? (editing.type === 'irregular' ? 'living' : editing.type) : 'living';
     [...typeToggle.children].forEach(b=> b.classList.toggle('active', b.dataset.type===selectedType));
     applyTypeVisibility();
 
     fAmount.value = editing ? editing.amount : '';
-    fDate.value = editing ? editing.date : new Date().toISOString().slice(0,10);
+    fDate.value = editing ? editing.date : (selectedCalDate || todayKST());
+    fInstallment.value = editing && editing.installmentCount > 1 ? editing.installmentCount : '';
 
     if(selectedType === 'transfer'){
       selectedTo = editing ? editing.toId : null;
@@ -1083,7 +1229,6 @@
       selectedCat = editing ? editing.categoryId : null;
       selectedPay = editing ? (editing.payMethod || null) : null;
     }
-    fRecurring.checked = editing ? !!editing.isRecurring : false;
 
     buildCatChoices();
     buildSubChoices();
@@ -1111,6 +1256,21 @@
 
   submitTx.addEventListener('click', async ()=>{
     if(submitTx.disabled) return;
+
+    if(editingInstMonth){
+      const origin = state.transactions.find(t=>t.id===editingId);
+      if(!origin) return;
+      submitTx.disabled = true;
+      const overrides = { ...(origin.installmentOverrides||{}), [editingInstMonth]: parseInt(fAmount.value,10) };
+      const { error } = await sb.from('transactions').update({ installment_overrides: overrides }).eq('id', editingId);
+      if(error){ showToast('저장 실패, 다시 시도해주세요'); console.error(error); submitTx.disabled=false; return; }
+      origin.installmentOverrides = overrides;
+      showToast('이 회차 금액을 수정했어요');
+      render();
+      closeSheet();
+      return;
+    }
+
     let payload;
     if(selectedType === 'transfer'){
       const fromEnv = state.irregularEnvelopes.find(e=>e.id===selectedFrom);
@@ -1134,12 +1294,13 @@
       payload = {
         amount: parseInt(fAmount.value,10),
         merchant: fMerchant.value.trim(),
-        type: selectedType,
+        type: findCatPool(selectedCat) || 'living',
         categoryId: selectedCat,
         subcat: fSubcat.value.trim(),
         payMethod: selectedPay,
         date: fDate.value,
-        isRecurring: fRecurring.checked
+        installmentCount: parseInt(fInstallment.value,10) > 1 ? parseInt(fInstallment.value,10) : null,
+        installmentOverrides: (editingId && parseInt(fInstallment.value,10) > 1) ? (state.transactions.find(t=>t.id===editingId)||{}).installmentOverrides || null : null
       };
     }
     submitTx.disabled = true;
@@ -1239,22 +1400,35 @@
 
   function buildFixedManage(){
     fixedManage.innerHTML = '';
-    state.fixedExpenses.forEach(f=>{
+    const sortedFixed = [...state.fixedExpenses].sort((a,b)=>{
+      const aActive = isFixedActiveNow(a), bActive = isFixedActiveNow(b);
+      return aActive === bActive ? 0 : (aActive ? -1 : 1);
+    });
+    sortedFixed.forEach(f=>{
+      const active = isFixedActiveNow(f);
       const row = document.createElement('div');
       row.className = 'manage-row';
       row.dataset.id = f.id;
+      if(!active) row.style.opacity = '0.5';
       row.innerHTML = `
         <div class="manage-row-top">
           <input class="mr-name" data-field="name" value="${f.name}">
           <button class="mr-del" data-action="del">✕</button>
         </div>
+        ${active ? '' : `<div style="font-size:11px; color:var(--over); margin:-4px 0 8px 0;">비활성 (마감됨 또는 할부 종료)</div>`}
         <div class="mr-line"><label>금액</label><input type="number" data-field="amount" value="${f.amount}"></div>
-        <div class="mr-line"><label>결제일</label><input type="number" data-field="payDay" min="1" max="31" value="${f.payDay||''}" placeholder="예: 15"></div>
         <div class="mr-line"><label>결제수단</label>
           <select data-field="payMethod">
             <option value="">선택 안 함</option>
             ${state.payMethods.map(p=>`<option value="${p.name}" ${f.payMethod===p.name?'selected':''}>${p.name}</option>`).join('')}
           </select>
+        </div>
+        <div class="mr-line"><label>총 할부개월</label><input type="number" data-field="installmentCount" min="1" max="120" value="${f.installmentCount||''}" placeholder="계속 반복"></div>
+        <div class="mr-line"><label>현재 회차</label><input type="number" data-field="installmentCurrentIdx" min="1" value="${f.installmentCount ? fixedInstallmentIndex(f, nowMonthKey()) : ''}" placeholder="예: 14"></div>
+        <div class="mr-line" style="align-items:center;">
+          <label>마감</label>
+          <span style="flex:1; font-size:12.5px; color:var(--ink-soft);">${f.endMonth ? `${f.endMonth}부터 종료됨` : '계속 진행 중'}</span>
+          <button type="button" class="add-row-btn mr-end-btn" style="width:auto; padding:6px 12px; font-size:12px; margin:0;">${f.endMonth ? '마감 취소' : '마감'}</button>
         </div>
       `;
       row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
@@ -1263,6 +1437,17 @@
         if(error){ showToast('삭제 실패'); console.error(error); return; }
         state.fixedExpenses = state.fixedExpenses.filter(x=>x.id!==f.id);
         buildFixedManage();
+      });
+      row.querySelector('.mr-end-btn').addEventListener('click', async ()=>{
+        const closing = !f.endMonth;
+        const newEndMonth = closing ? monthKey(viewDate) : null;
+        if(closing && !confirm(`"${f.name}"을(를) ${newEndMonth}부터(이번 달부터) 고정지출 목록에서 안 보이게 할까요? 이전 기록은 그대로 남아있어요.`)) return;
+        const { error } = await sb.from('fixed_expenses').update({ end_month: newEndMonth }).eq('id', f.id);
+        if(error){ showToast('처리 실패'); console.error(error); return; }
+        f.endMonth = newEndMonth;
+        buildFixedManage();
+        render();
+        showToast(closing ? '마감 처리했어요' : '마감을 취소했어요');
       });
       fixedManage.appendChild(row);
     });
@@ -1300,7 +1485,7 @@
     buildIrregularManage();
   });
   document.getElementById('addFixed').addEventListener('click', ()=>{
-    state.fixedExpenses.push({ id:'fixed_'+Date.now().toString(36), name:'새 항목', amount:0, payDay:null });
+    state.fixedExpenses.push({ id:'fixed_'+Date.now().toString(36), name:'새 항목', amount:0 });
     buildFixedManage();
   });
   document.getElementById('addPay').addEventListener('click', ()=>{
@@ -1351,9 +1536,16 @@
       if(!f) return;
       f.name = row.querySelector('[data-field="name"]').value.trim() || f.name;
       f.amount = Math.max(0, parseInt(row.querySelector('[data-field="amount"]').value,10) || 0);
-      const pd = parseInt(row.querySelector('[data-field="payDay"]').value,10);
-      f.payDay = (pd>=1 && pd<=31) ? pd : null;
       f.payMethod = row.querySelector('[data-field="payMethod"]').value || null;
+      const instCount = parseInt(row.querySelector('[data-field="installmentCount"]').value,10);
+      const instIdx = parseInt(row.querySelector('[data-field="installmentCurrentIdx"]').value,10);
+      if(instCount > 1 && instIdx >= 1){
+        f.installmentCount = instCount;
+        f.installmentStartMonth = addMonths(nowMonthKey(), -(instIdx-1));
+      }else{
+        f.installmentCount = null;
+        f.installmentStartMonth = null;
+      }
     });
     payManage.querySelectorAll('.manage-row').forEach(row=>{
       const p = state.payMethods.find(x=>x.id===row.dataset.id);
@@ -1372,6 +1564,7 @@
 
   // ── 뷰 전환 (분석 탭 내부: 지출/수입/합계/결제수단) ──
   let currentView = 'all';
+  let fixedSectionCollapsed = true;
   let currentSort = 'date_desc';
   const tabExpense = document.getElementById('tabExpense');
   const tabIncome = document.getElementById('tabIncome');
@@ -1385,26 +1578,26 @@
     txPage = 0;
     payPage = 0;
     if(currentView==='pay'){
-      renderPayTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+      renderPayTxList(expandMonthTx(monthKey(viewDate)));
     }else{
-      renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+      renderTxList(expandMonthTx(monthKey(viewDate)));
     }
   });
   document.getElementById('txPrevPage').addEventListener('click', ()=>{
     txPage--;
-    renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+    renderTxList(expandMonthTx(monthKey(viewDate)));
   });
   document.getElementById('txNextPage').addEventListener('click', ()=>{
     txPage++;
-    renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+    renderTxList(expandMonthTx(monthKey(viewDate)));
   });
   document.getElementById('payPrevPage').addEventListener('click', ()=>{
     payPage--;
-    renderPayTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+    renderPayTxList(expandMonthTx(monthKey(viewDate)));
   });
   document.getElementById('payNextPage').addEventListener('click', ()=>{
     payPage++;
-    renderPayTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+    renderPayTxList(expandMonthTx(monthKey(viewDate)));
   });
 
   function switchView(view){
@@ -1419,12 +1612,12 @@
     if(view==='pay'){
       tabPay.classList.add('active');
       document.getElementById('payMethodSummary').style.display = 'flex';
-      renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date)));
+      renderPayMethodSummary(expandMonthTx(monthKey(viewDate)));
     }else{
       ({expense:tabExpense, income:tabIncome, all:tabAll}[view]).classList.add('active');
       txListEl.style.display = 'flex';
       document.getElementById('txPager').style.display = 'flex';
-      renderTxList(state.transactions.filter(t=>inViewMonth(t.date)));
+      renderTxList(expandMonthTx(monthKey(viewDate)));
     }
   }
   tabExpense.addEventListener('click', ()=>switchView('expense'));
@@ -1435,12 +1628,12 @@
   document.getElementById('prevMonth').addEventListener('click', ()=>{
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
     render();
-    if(currentView==='pay'){ renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date))); }
+    if(currentView==='pay'){ renderPayMethodSummary(expandMonthTx(monthKey(viewDate))); }
   });
   document.getElementById('nextMonth').addEventListener('click', ()=>{
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
     render();
-    if(currentView==='pay'){ renderPayMethodSummary(state.transactions.filter(t=>inViewMonth(t.date))); }
+    if(currentView==='pay'){ renderPayMethodSummary(expandMonthTx(monthKey(viewDate))); }
   });
 
   document.querySelectorAll('.section-label[data-toggle]').forEach(label=>{
