@@ -47,6 +47,15 @@
   .auth-screen{ position:fixed; inset:0; z-index:60; background:var(--paper); display:flex; align-items:center; justify-content:center; padding:20px; }
   .auth-box{ width:100%; max-width:360px; background:var(--paper-dim); border:1px solid var(--line); border-radius:18px; padding:26px 22px; box-shadow:var(--shadow); }
   .auth-title{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:22px; margin-bottom:18px; text-align:center; color:var(--ink); }
+
+  #analysisBlurWrap{ transition:filter .25s ease; }
+  #analysisBlurWrap.blur-hidden{ filter:blur(9px); user-select:none; pointer-events:none; }
+  #analysisBlurHint{
+    display:none; position:absolute; inset:0; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:var(--ink-soft); background:rgba(243,239,228,0.4);
+    border-radius:18px; cursor:pointer; letter-spacing:0.3px;
+  }
+  #analysisBlurContainer.hidden-state #analysisBlurHint{ display:flex; }
   .app{ width:100%; max-width:480px; padding:env(safe-area-inset-top,0) 18px 0 18px; position:relative; }
 
   header{ padding:28px 4px 18px 4px; display:flex; align-items:flex-end; justify-content:space-between; }
@@ -147,6 +156,7 @@
   .cal-day .d-amt{ font-family:'IBM Plex Mono', monospace; font-size:8.5px; }
   .cal-day.has-spend{ background:#fff; border:1px solid var(--line); }
   .cal-day.today{ outline:2px solid var(--gold); }
+  .cal-day.selected{ outline:2px solid var(--ink); }
 
   .fab{
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);
@@ -187,8 +197,16 @@
 
   .settings-group{ margin-bottom:22px; }
   .settings-group h4{ font-size:13px; font-weight:700; color:var(--ink-soft); opacity:0.7; letter-spacing:1px; margin:0 0 10px 2px; }
-  .manage-row{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:8px; }
+  .manage-row{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:8px; touch-action:pan-y; }
+  .manage-row.dragging{ opacity:0.6; box-shadow:0 6px 16px rgba(19,42,51,0.22); position:relative; z-index:5; }
   .manage-row-top{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .mr-drag{ cursor:grab; touch-action:none; color:var(--ink-soft); opacity:0.4; font-size:16px; padding:2px 4px; flex-shrink:0; }
+  .mr-toggle{ cursor:pointer; }
+  .mr-amt-preview{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft); opacity:0.75; white-space:nowrap; }
+  .mr-toggle .chevron{ font-size:11px; opacity:0.5; transition:transform .2s ease; flex-shrink:0; }
+  .manage-row.expanded .mr-toggle .chevron{ transform:rotate(180deg); }
+  .mr-body{ max-height:0; overflow:hidden; transition:max-height .3s ease; }
+  .manage-row.expanded .mr-body{ max-height:400px; margin-top:8px; }
   .manage-dot{ width:10px;height:10px;border-radius:50%; flex-shrink:0; }
   .manage-row input.mr-name{ flex:1; border:none; border-bottom:1.5px solid var(--line); padding:4px 2px; font-weight:700; font-size:14.5px; background:transparent; }
   .manage-row input.mr-name:focus{ outline:none; border-color:var(--gold); }
@@ -216,9 +234,10 @@
   }
   .bottom-nav-inner{ display:flex; width:100%; max-width:480px; justify-content:space-around; }
   .bn-item, .sr-item{ border:none; background:transparent; font-family:'Pretendard'; font-weight:700; color:var(--ink-soft); opacity:0.55; cursor:pointer; border-radius:10px; }
-  .bn-item{ font-size:12.5px; padding:7px 16px; }
+  .bn-item{ font-size:11px; padding:7px 14px; display:flex; flex-direction:column; align-items:center; gap:3px; }
   .bn-item.active, .sr-item.active{ opacity:1; color:var(--ink); background:var(--paper-dim); }
-  .sr-item{ font-size:11.5px; width:56px; padding:12px 6px; }
+  .bn-icon{ width:21px; height:21px; fill:currentColor; }
+  .sr-item{ font-size:11px; width:56px; padding:12px 6px; display:flex; flex-direction:column; align-items:center; gap:4px; }
 
   @media (min-width:760px){
     body{ padding-bottom:80px; }
@@ -251,10 +270,22 @@
 </div>
 <div class="shell" id="shell" style="display:none;">
 <nav class="side-rail" id="sideRail">
-  <button class="sr-item active" data-col="calendar">내가계부</button>
-  <button class="sr-item" data-col="analysis">분석</button>
-  <button class="sr-item" data-col="budget">예산</button>
-  <button class="sr-item nav-settings-btn" data-action="settings">설정</button>
+  <button class="sr-item active" data-col="calendar">
+    <svg class="bn-icon" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM3 10v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10H3zm4 3h4v4H7v-4z"/></svg>
+    <span>내가계부</span>
+  </button>
+  <button class="sr-item" data-col="analysis">
+    <svg class="bn-icon" viewBox="0 0 24 24"><path d="M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z"/></svg>
+    <span>분석</span>
+  </button>
+  <button class="sr-item" data-col="budget">
+    <svg class="bn-icon" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h13v2H5a.5.5 0 0 0 0 1h15a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6zm14 7.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+    <span>예산</span>
+  </button>
+  <button class="sr-item nav-settings-btn" data-action="settings">
+    <svg class="bn-icon" viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9.4 4a7.4 7.4 0 0 0-.14-1.4l2.1-1.65-2-3.46-2.48 1a7.6 7.6 0 0 0-2.42-1.4L16 2h-4l-.46 2.6a7.6 7.6 0 0 0-2.42 1.4l-2.48-1-2 3.46 2.1 1.64A7.4 7.4 0 0 0 6.6 12c0 .48.05.94.14 1.4l-2.1 1.65 2 3.46 2.48-1c.72.6 1.54 1.08 2.42 1.4L12 22h4l.46-2.6a7.6 7.6 0 0 0 2.42-1.4l2.48 1 2-3.46-2.1-1.64c.09-.46.14-.92.14-1.4z"/></svg>
+    <span>설정</span>
+  </button>
 </nav>
 <div class="app">
 
@@ -300,16 +331,21 @@
 
   </div>
   <div class="col-analysis" id="colAnalysis">
-    <div class="passbook">
-      <div class="eyebrow">이번 달 분석</div>
-      <div class="total-row">
-        <span class="total-amt" id="anaNet">0</span>
-        <span class="total-of">원 순합계 (수입 − 지출)</span>
+    <div id="analysisBlurContainer" class="hidden-state" style="position:relative;">
+      <div id="analysisBlurWrap" class="blur-hidden">
+        <div class="passbook">
+          <div class="eyebrow">이번 달 분석</div>
+          <div class="total-row">
+            <span class="total-amt" id="anaNet">0</span>
+            <span class="total-of">원 순합계 (수입 − 지출)</span>
+          </div>
+        </div>
+        <div class="tx-list" style="margin:14px 0;">
+          <div class="tx-item"><span class="tx-merchant">총 수입</span><span class="tx-amt" id="anaIncome">0원</span></div>
+          <div class="tx-item"><span class="tx-merchant">총 지출</span><span class="tx-amt" id="anaExpense">0원</span></div>
+        </div>
       </div>
-    </div>
-    <div class="tx-list" style="margin:14px 0;">
-      <div class="tx-item"><span class="tx-merchant">총 수입</span><span class="tx-amt" id="anaIncome">0원</span></div>
-      <div class="tx-item"><span class="tx-merchant">총 지출</span><span class="tx-amt" id="anaExpense">0원</span></div>
+      <div id="analysisBlurHint">탭하면 금액이 보여요</div>
     </div>
 
     <div class="recent">
@@ -355,10 +391,22 @@
 <button class="fab" id="openAdd">+ 내역 추가</button>
 <nav class="bottom-nav" id="bottomNav">
   <div class="bottom-nav-inner">
-    <button class="bn-item active" data-col="calendar">내가계부</button>
-    <button class="bn-item" data-col="analysis">분석</button>
-    <button class="bn-item" data-col="budget">예산</button>
-    <button class="bn-item nav-settings-btn" data-action="settings">설정</button>
+    <button class="bn-item active" data-col="calendar">
+      <svg class="bn-icon" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM3 10v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10H3zm4 3h4v4H7v-4z"/></svg>
+      <span>내가계부</span>
+    </button>
+    <button class="bn-item" data-col="analysis">
+      <svg class="bn-icon" viewBox="0 0 24 24"><path d="M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z"/></svg>
+      <span>분석</span>
+    </button>
+    <button class="bn-item" data-col="budget">
+      <svg class="bn-icon" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h13v2H5a.5.5 0 0 0 0 1h15a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6zm14 7.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+      <span>예산</span>
+    </button>
+    <button class="bn-item nav-settings-btn" data-action="settings">
+      <svg class="bn-icon" viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9.4 4a7.4 7.4 0 0 0-.14-1.4l2.1-1.65-2-3.46-2.48 1a7.6 7.6 0 0 0-2.42-1.4L16 2h-4l-.46 2.6a7.6 7.6 0 0 0-2.42 1.4l-2.48-1-2 3.46 2.1 1.64A7.4 7.4 0 0 0 6.6 12c0 .48.05.94.14 1.4l-2.1 1.65 2 3.46 2.48-1c.72.6 1.54 1.08 2.42 1.4L12 22h4l.46-2.6a7.6 7.6 0 0 0 2.42-1.4l2.48 1 2-3.46-2.1-1.64c.09-.46.14-.92.14-1.4z"/></svg>
+      <span>설정</span>
+    </button>
   </div>
 </nav>
 
@@ -494,15 +542,29 @@
   function rowToPay(r){ return { id:r.id, name:r.name }; }
   function payToRow(p, idx){ return { id:p.id, name:p.name, sort_order:idx }; }
 
+  function sleep(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+  async function fetchAllTables(){
+    return Promise.all([
+      sb.from('living_categories').select('*').order('sort_order'),
+      sb.from('irregular_envelopes').select('*').order('sort_order'),
+      sb.from('transactions').select('*').order('date'),
+      sb.from('fixed_expenses').select('*').order('sort_order'),
+      sb.from('pay_methods').select('*').order('sort_order')
+    ]);
+  }
+
   async function loadState(){
-    const [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}, {data:fixedRows, error:e4}, {data:payRows, error:e5}] =
-      await Promise.all([
-        sb.from('living_categories').select('*').order('sort_order'),
-        sb.from('irregular_envelopes').select('*').order('sort_order'),
-        sb.from('transactions').select('*').order('date'),
-        sb.from('fixed_expenses').select('*').order('sort_order'),
-        sb.from('pay_methods').select('*').order('sort_order')
-      ]);
+    let results = await fetchAllTables();
+    let [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}, {data:fixedRows, error:e4}, {data:payRows, error:e5}] = results;
+    // 로그인 직후엔 세션 토큰이 아직 준비 안 됐을 수 있어서, 실패하면 잠깐 기다렸다 최대 2번 재시도
+    let attempt = 0;
+    while((e1||e2||e3||e4||e5) && attempt < 2){
+      attempt++;
+      await sleep(600);
+      results = await fetchAllTables();
+      [{data:livingRows, error:e1}, {data:irrRows, error:e2}, {data:txRows, error:e3}, {data:fixedRows, error:e4}, {data:payRows, error:e5}] = results;
+    }
     if(e1||e2||e3||e4||e5){ showToast('Supabase 연결에 실패했어요'); console.error(e1,e2,e3,e4,e5); return structuredClone(DEFAULT_STATE); }
 
     if(!livingRows.length && !irrRows.length){
@@ -980,17 +1042,18 @@
     monthTx.filter(t=>t.type!=='transfer' && t.type!=='income').forEach(t=>{ dayTotals[t.date] = (dayTotals[t.date]||0) + t.amount; });
 
     const y = viewDate.getFullYear(), m = viewDate.getMonth();
-    const firstDow = new Date(y,m,1).getDay();
+    const firstDow = (new Date(y,m,1).getDay() + 6) % 7;
     const daysInMonth = new Date(y,m+1,0).getDate();
     const todayStr = todayKST();
 
-    let html = ['일','월','화','수','목','금','토'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+    let html = ['월','화','수','목','금','토','일'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
     for(let i=0;i<firstDow;i++) html += `<div class="cal-day empty"></div>`;
     for(let day=1; day<=daysInMonth; day++){
       const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       const amt = dayTotals[dateStr];
       const isToday = dateStr === todayStr;
-      html += `<div class="cal-day ${amt?'has-spend':''} ${isToday?'today':''}" data-date="${dateStr}">
+      const isSelected = !isToday && dateStr === selectedCalDate;
+      html += `<div class="cal-day ${amt?'has-spend':''} ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${dateStr}">
         <span class="d-num">${day}</span>
         ${amt ? `<span class="d-amt">${fmtMan(amt)}</span>` : ''}
       </div>`;
@@ -1004,6 +1067,11 @@
 
   function showCalDay(dateStr, monthTx){
     selectedCalDate = dateStr;
+    document.querySelectorAll('.cal-day.selected').forEach(el=>el.classList.remove('selected'));
+    if(dateStr !== todayKST()){
+      const cell = document.querySelector(`.cal-day[data-date="${dateStr}"]`);
+      if(cell) cell.classList.add('selected');
+    }
     const dayList = document.getElementById('calDayList');
     const dayTx = monthTx.filter(t=>t.date===dateStr);
     dayList.style.display='block';
@@ -1338,11 +1406,97 @@
   const irregularManage = document.getElementById('irregularManage');
   const fixedManage = document.getElementById('fixedManage');
   const payManage = document.getElementById('payManage');
+  enableDragReorder(livingManage, ()=>state.livingCategories);
+  enableDragReorder(irregularManage, ()=>state.irregularEnvelopes);
+  enableDragReorder(payManage, ()=>state.payMethods);
 
   function nextColor(){
     const c = PALETTE[nextColorIdx % PALETTE.length];
     nextColorIdx++;
     return c;
+  }
+
+  // 꾹 눌러서(롱프레스) 드래그로 순서 바꾸기 — .mr-drag 핸들에서만 시작됨
+  function enableDragReorder(containerEl, getArray){
+    let dragEl = null, startY = 0, startX = 0, longPressTimer = null, dragging = false, pointerId = null, dragStartTop = 0;
+
+    function clearTimer(){ if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; } }
+
+    // 잡은 카드가 "손가락이 잡은 지점"이 아니라 "카드 자신의 기준"으로 항상 dragStartTop+이동거리 위치에 오도록 보정
+    function positionDragEl(clientY){
+      const desiredTop = dragStartTop + (clientY - startY);
+      dragEl.style.transform = 'none';
+      const naturalTop = dragEl.getBoundingClientRect().top;
+      dragEl.style.transform = `translateY(${desiredTop - naturalTop}px)`;
+      return desiredTop;
+    }
+
+    containerEl.addEventListener('pointerdown', (e)=>{
+      const handle = e.target.closest('.mr-drag');
+      if(!handle) return;
+      const row = handle.closest('.manage-row');
+      if(!row) return;
+      startY = e.clientY; startX = e.clientX; pointerId = e.pointerId;
+      longPressTimer = setTimeout(()=>{
+        dragging = true;
+        dragEl = row;
+        dragStartTop = row.getBoundingClientRect().top;
+        row.classList.add('dragging');
+        row.style.transition = 'none';
+        try{ row.setPointerCapture(pointerId); }catch(err){}
+      }, 300);
+    });
+
+    containerEl.addEventListener('pointermove', (e)=>{
+      if(longPressTimer && !dragging && (Math.abs(e.clientY-startY)>8 || Math.abs(e.clientX-startX)>8)){
+        clearTimer();
+      }
+      if(!dragging || !dragEl) return;
+      e.preventDefault();
+      const desiredTop = positionDragEl(e.clientY);
+      const dragCenterY = desiredTop + dragEl.offsetHeight/2;
+
+      const rows = [...containerEl.querySelectorAll('.manage-row')].filter(r=>r!==dragEl);
+      for(const r of rows){
+        const rect = r.getBoundingClientRect();
+        const mid = rect.top + rect.height/2;
+        const dragIsAfter = !!(r.compareDocumentPosition(dragEl) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if((dragCenterY < mid && dragIsAfter) || (dragCenterY > mid && !dragIsAfter)){
+          const others = [...containerEl.querySelectorAll('.manage-row')].filter(x=>x!==dragEl);
+          const firstTops = new Map(others.map(o=>[o, o.getBoundingClientRect().top]));
+          if(dragCenterY < mid) containerEl.insertBefore(dragEl, r); else containerEl.insertBefore(dragEl, r.nextSibling);
+          others.forEach(o=>{
+            const dy = firstTops.get(o) - o.getBoundingClientRect().top;
+            if(dy){
+              o.style.transition = 'none';
+              o.style.transform = `translateY(${dy}px)`;
+              requestAnimationFrame(()=>{
+                o.style.transition = 'transform .22s ease';
+                o.style.transform = '';
+              });
+            }
+          });
+          positionDragEl(e.clientY);
+          break;
+        }
+      }
+    });
+
+    function endDrag(e){
+      clearTimer();
+      if(!dragging){ return; }
+      dragging = false;
+      dragEl.style.transition = 'transform .18s ease';
+      dragEl.style.transform = '';
+      dragEl.classList.remove('dragging');
+      try{ dragEl.releasePointerCapture(pointerId); }catch(err){}
+      const ids = [...containerEl.querySelectorAll('.manage-row')].map(r=>r.dataset.id);
+      const arr = getArray();
+      arr.sort((a,b)=> ids.indexOf(a.id) - ids.indexOf(b.id));
+      dragEl = null;
+    }
+    containerEl.addEventListener('pointerup', endDrag);
+    containerEl.addEventListener('pointercancel', endDrag);
   }
 
   function buildLivingManage(){
@@ -1353,6 +1507,7 @@
       row.dataset.id = cat.id;
       row.innerHTML = `
         <div class="manage-row-top">
+          <span class="mr-drag">⠿</span>
           <span class="manage-dot" style="background:${cat.color}"></span>
           <input class="mr-name" data-field="name" value="${cat.name}">
           <button class="mr-del" data-action="del">✕</button>
@@ -1380,6 +1535,7 @@
       row.dataset.id = env.id;
       row.innerHTML = `
         <div class="manage-row-top">
+          <span class="mr-drag">⠿</span>
           <span class="manage-dot" style="background:${env.color}"></span>
           <input class="mr-name" data-field="name" value="${env.name}">
           <button class="mr-del" data-action="del">✕</button>
@@ -1411,27 +1567,35 @@
       row.dataset.id = f.id;
       if(!active) row.style.opacity = '0.5';
       row.innerHTML = `
-        <div class="manage-row-top">
+        <div class="manage-row-top mr-toggle">
           <input class="mr-name" data-field="name" value="${f.name}">
+          <span class="mr-amt-preview">${fmt(f.amount)}원${active ? '' : ' · 비활성'}</span>
+          <span class="chevron">▾</span>
           <button class="mr-del" data-action="del">✕</button>
         </div>
-        ${active ? '' : `<div style="font-size:11px; color:var(--over); margin:-4px 0 8px 0;">비활성 (마감됨 또는 할부 종료)</div>`}
-        <div class="mr-line"><label>금액</label><input type="number" data-field="amount" value="${f.amount}"></div>
-        <div class="mr-line"><label>결제수단</label>
-          <select data-field="payMethod">
-            <option value="">선택 안 함</option>
-            ${state.payMethods.map(p=>`<option value="${p.name}" ${f.payMethod===p.name?'selected':''}>${p.name}</option>`).join('')}
-          </select>
-        </div>
-        <div class="mr-line"><label>총 할부개월</label><input type="number" data-field="installmentCount" min="1" max="120" value="${f.installmentCount||''}" placeholder="계속 반복"></div>
-        <div class="mr-line"><label>현재 회차</label><input type="number" data-field="installmentCurrentIdx" min="1" value="${f.installmentCount ? fixedInstallmentIndex(f, nowMonthKey()) : ''}" placeholder="예: 14"></div>
-        <div class="mr-line" style="align-items:center;">
-          <label>마감</label>
-          <span style="flex:1; font-size:12.5px; color:var(--ink-soft);">${f.endMonth ? `${f.endMonth}부터 종료됨` : '계속 진행 중'}</span>
-          <button type="button" class="add-row-btn mr-end-btn" style="width:auto; padding:6px 12px; font-size:12px; margin:0;">${f.endMonth ? '마감 취소' : '마감'}</button>
+        <div class="mr-body">
+          <div class="mr-line"><label>금액</label><input type="number" data-field="amount" value="${f.amount}"></div>
+          <div class="mr-line"><label>결제수단</label>
+            <select data-field="payMethod">
+              <option value="">선택 안 함</option>
+              ${state.payMethods.map(p=>`<option value="${p.name}" ${f.payMethod===p.name?'selected':''}>${p.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="mr-line"><label>총 할부개월</label><input type="number" data-field="installmentCount" min="1" max="120" value="${f.installmentCount||''}" placeholder="계속 반복"></div>
+          <div class="mr-line"><label>현재 회차</label><input type="number" data-field="installmentCurrentIdx" min="1" value="${f.installmentCount ? fixedInstallmentIndex(f, nowMonthKey()) : ''}" placeholder="예: 14"></div>
+          <div class="mr-line" style="align-items:center;">
+            <label>마감</label>
+            <span style="flex:1; font-size:12.5px; color:var(--ink-soft);">${f.endMonth ? `${f.endMonth}부터 종료됨` : '계속 진행 중'}</span>
+            <button type="button" class="add-row-btn mr-end-btn" style="width:auto; padding:6px 12px; font-size:12px; margin:0;">${f.endMonth ? '마감 취소' : '마감'}</button>
+          </div>
         </div>
       `;
-      row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
+      row.querySelector('.mr-toggle').addEventListener('click', (e)=>{
+        if(e.target.closest('.mr-name') || e.target.closest('.mr-del')) return;
+        row.classList.toggle('expanded');
+      });
+      row.querySelector('[data-action="del"]').addEventListener('click', async (e)=>{
+        e.stopPropagation();
         if(!confirm(`"${f.name}" 고정지출을 삭제할까요?`)) return;
         const { error } = await sb.from('fixed_expenses').delete().eq('id', f.id);
         if(error){ showToast('삭제 실패'); console.error(error); return; }
@@ -1461,6 +1625,7 @@
       row.dataset.id = p.id;
       row.innerHTML = `
         <div class="manage-row-top">
+          <span class="mr-drag">⠿</span>
           <input class="mr-name" data-field="name" value="${p.name}">
           <button class="mr-del" data-action="del">✕</button>
         </div>
@@ -1503,6 +1668,11 @@
   }
   document.querySelectorAll('.nav-settings-btn').forEach(btn=> btn.addEventListener('click', openSettings));
 
+  document.getElementById('analysisBlurContainer').addEventListener('click', function(){
+    this.classList.toggle('hidden-state');
+    document.getElementById('analysisBlurWrap').classList.toggle('blur-hidden', this.classList.contains('hidden-state'));
+  });
+
   // ── 반응형 홈/내역 nav (좁은 화면 하단 탭바 / 넓은 화면 좌측 레일) ──
   const appColsEl = document.getElementById('appCols');
   function setActiveCol(col){
@@ -1511,6 +1681,10 @@
       btn.classList.toggle('active', btn.dataset.col === col);
     });
     document.getElementById('openAdd').style.display = (col === 'calendar') ? 'flex' : 'none';
+    if(col !== 'analysis'){
+      document.getElementById('analysisBlurContainer').classList.add('hidden-state');
+      document.getElementById('analysisBlurWrap').classList.add('blur-hidden');
+    }
   }
   document.querySelectorAll('.bn-item[data-col], .sr-item[data-col]').forEach(btn=>{
     btn.addEventListener('click', ()=> setActiveCol(btn.dataset.col));
