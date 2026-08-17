@@ -105,7 +105,7 @@
   .env-name{ font-weight:700; font-size:15.5px; display:flex; align-items:center; gap:8px; }
   .env-icon{ width:8px;height:8px;border-radius:50%; display:inline-block; }
   .env-pct{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; font-weight:600; padding:3px 8px; border-radius:20px; }
-  .env-numbers{ margin-top:10px; display:flex; align-items:baseline; gap:6px; }
+  .env-numbers{ margin-top:10px; display:flex; flex-wrap:wrap; row-gap:4px; align-items:baseline; gap:6px; }
   .env-spent{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:19px; }
   .env-limit{ font-size:12.5px; color:var(--ink-soft); opacity:0.6; }
   .env-bar{ margin-top:10px; height:8px; border-radius:5px; background:rgba(19,42,51,0.12); overflow:hidden; }
@@ -117,12 +117,13 @@
   .env-sub-row{ display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); padding:5px 0; border-top:1px dashed var(--line); }
   .env-caret{ font-size:11px; opacity:0.4; margin-left:4px; }
 
-  /* 비정기 카테고리 전용 스타일 */
+  /* 누적 카테고리 전용 스타일 */
   .envelope.irregular{ background:linear-gradient(155deg, #EFE9D8 0%, var(--paper) 100%); border-color:rgba(92,81,64,0.25); }
   .irr-balance-row{ display:flex; align-items:baseline; gap:6px; margin-top:10px; }
   .irr-balance{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:22px; color:var(--irregular); }
   .irr-label{ font-size:12px; color:var(--ink-soft); opacity:0.65; }
-  .irr-foot{ margin-top:8px; font-size:11.5px; color:var(--ink-soft); opacity:0.7; display:flex; gap:10px; }
+  .irr-foot{ margin-top:8px; font-size:11.5px; color:var(--ink-soft); opacity:0.7; display:flex; flex-wrap:wrap; row-gap:4px; gap:10px; }
+  .irr-foot span{ white-space:nowrap; display:inline-flex; align-items:center; gap:2px; }
 
   .view-tabs{ display:flex; gap:6px; margin:0 2px 10px 2px; }
   .view-tab{ border:none; background:transparent; font-family:'Pretendard'; font-weight:700; font-size:13.5px; color:var(--ink-soft); opacity:0.5; padding:6px 2px; cursor:pointer; border-bottom:2px solid transparent; }
@@ -318,7 +319,7 @@
     <div class="envelopes" id="livingList"></div>
   </div>
 
-  <div class="section-label" data-toggle="irregularBody"><span>비정기 카테고리</span><span class="chevron">▾</span></div>
+  <div class="section-label" data-toggle="irregularBody"><span>누적 카테고리</span><span class="chevron">▾</span></div>
   <div class="section-body" id="irregularBody">
     <div class="envelopes" id="irregularList"></div>
   </div>
@@ -361,6 +362,9 @@
           <option value="amount_asc">금액 낮은순</option>
         </select>
       </div>
+      <select id="catFilterSelect" style="display:none; width:100%; margin-bottom:10px; border:1px solid var(--line); border-radius:8px; padding:6px 8px; font-size:12px; background:#fff; color:var(--ink-soft);">
+        <option value="">전체 카테고리</option>
+      </select>
       <div id="payMethodSummary" style="display:none; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
       <div class="tx-list" id="payTxList" style="display:none; margin-bottom:10px;"></div>
       <div id="payTxPager" style="display:none; justify-content:center; align-items:center; gap:16px; margin-bottom:12px;">
@@ -415,10 +419,11 @@
 <div class="sheet" id="sheet">
   <div class="sheet-handle"></div>
   <h3 id="sheetTitle">지출 추가</h3>
+  <!-- '이체'(비정기→생활 보정) 생성 버튼은 정책상 제거함: 생활 카테고리 초과를 다른 Envelope가 자동 보정하지 않음.
+       과거에 생성된 transfer 거래는 데이터 보존을 위해 조회/수정/삭제는 계속 가능하도록 관련 로직은 남겨둠. -->
   <div class="type-toggle" id="typeToggle">
     <button class="type-btn active" data-type="living">지출</button>
     <button class="type-btn" data-type="income">수입</button>
-    <button class="type-btn" data-type="transfer">이체</button>
   </div>
   <div class="field">
     <label>금액</label>
@@ -466,9 +471,9 @@
     <button class="add-row-btn" id="addLiving">+ 생활 카테고리 추가</button>
   </div>
   <div class="settings-group">
-    <h4>비정기 카테고리 (매달 자동 충전 · 누적)</h4>
+    <h4>누적 카테고리 (매달 자동 충전 · 이월)</h4>
     <div id="irregularManage"></div>
-    <button class="add-row-btn" id="addIrregular">+ 비정기 카테고리 추가</button>
+    <button class="add-row-btn" id="addIrregular">+ 누적 카테고리 추가</button>
   </div>
   <div class="settings-group">
     <h4>고정지출 (매달 반복, 한도 없음)</h4>
@@ -507,16 +512,17 @@
   }
 
   const DEFAULT_STATE = {
+    // living 카테고리의 limit은 "기본 예산(default_amount)"이며, 월별 override는 state.monthlyBudgets에 별도 저장된다.
     livingCategories: [
       { id:'food',      name:'식비',     color:PALETTE[0], limit:600000, subcats:['배달음식','점심','커피','외식','간식'] },
       { id:'living',    name:'생활비',   color:PALETTE[1], limit:300000, subcats:[] },
-      { id:'beauty',    name:'꾸밈비',   color:PALETTE[2], limit:300000, subcats:[] },
-      { id:'culture',   name:'문화·취미', color:PALETTE[3], limit:200000, subcats:[] },
       { id:'transport', name:'교통',     color:PALETTE[4], limit:400000, subcats:[] },
       { id:'etc',       name:'기타',     color:PALETTE[5], limit:100000, subcats:[] }
     ],
+    // 비정기 카테고리 = 누적형 Envelope(Sinking Fund): 매달 monthlyAmount만큼 적립, 안 쓰면 이월
     irregularEnvelopes: [
-      { id:'irregular1', name:'비정기', color:PALETTE[6], monthlyAmount:200000, startMonth: nowMonthKey(), subcats:['의류','경조사','자동차','생활용품','여행','기타'] }
+      { id:'irregular1', name:'경조사',   color:PALETTE[6], monthlyAmount:200000, startMonth: nowMonthKey(), subcats:['경조사','가족선물'] },
+      { id:'allowance',  name:'개인 용돈', color:PALETTE[2], monthlyAmount:500000, startMonth: nowMonthKey(), subcats:['꾸밈','문화·취미','의류','자동차','생활용품','여행','기타'] }
     ],
     transactions: [],
     fixedExpenses: [],
@@ -527,14 +533,44 @@
       { id:'pay_cash',     name:'현금' },
       { id:'pay_kakao',    name:'카카오페이' },
       { id:'pay_etc',      name:'기타' }
-    ]
+    ],
+    monthlyBudgets: [],
+    envelopeRateChanges: []
     // { id, amount, merchant, type:'living'|'irregular', categoryId, subcat, date }
   };
 
-  function rowToLivingCat(r){ return { id:r.id, name:r.name, color:r.color, limit:r.limit_amount, subcats:r.subcats||[] }; }
-  function livingCatToRow(c, idx){ return { id:c.id, name:c.name, color:c.color, limit_amount:c.limit, subcats:c.subcats||[], sort_order:idx }; }
+  function rowToLivingCat(r){ return { id:r.id, name:r.name, color:r.color, limit:(r.default_amount != null ? r.default_amount : r.limit_amount), subcats:r.subcats||[] }; }
+  function livingCatToRow(c, idx){ return { id:c.id, name:c.name, color:c.color, default_amount:c.limit, limit_amount:c.limit, subcats:c.subcats||[], sort_order:idx }; }
   function rowToIrregular(r){ return { id:r.id, name:r.name, color:r.color, monthlyAmount:r.monthly_amount, startMonth:r.start_month, subcats:r.subcats||[] }; }
   function irregularToRow(e, idx){ return { id:e.id, name:e.name, color:e.color, monthly_amount:e.monthlyAmount, start_month:e.startMonth, subcats:e.subcats||[], sort_order:idx }; }
+  function rowToBudget(r){ return { id:r.id, categoryId:r.category_id, yearMonth:r.year_month, amount:r.amount }; }
+  function budgetToRow(b){ return { id:b.id, category_id:b.categoryId, year_month:b.yearMonth, amount:b.amount }; }
+  function rowToRateChange(r){ return { id:r.id, envelopeId:r.envelope_id, effectiveMonth:r.effective_month, amount:r.monthly_amount }; }
+  function rateChangeToRow(r){ return { id:r.id, envelope_id:r.envelopeId, effective_month:r.effectiveMonth, monthly_amount:r.amount }; }
+  // 생활 카테고리의 월별 예산: 해당 월에 override(monthly_budgets)가 있으면 그 값, 없으면 카테고리 기본 예산(default_amount)
+  function getBudgetForCategory(cat, yearMonth){
+    const override = state.monthlyBudgets.find(b=>b.categoryId===cat.id && b.yearMonth===yearMonth);
+    return override ? override.amount : cat.limit;
+  }
+  // 누적 카테고리의 특정 달 충전액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값,
+  // 없으면 env.monthlyAmount(기본값)를 쓴다. 과거 달의 변경 이력은 그대로 남아있어 이후에 기본값을
+  // 바꿔도 이미 지정해둔 달들은 영향받지 않는다.
+  function monthlyAmountForMonth(env, yearMonth){
+    const applicable = state.envelopeRateChanges
+      .filter(r=>r.envelopeId===env.id && r.effectiveMonth<=yearMonth)
+      .sort((a,b)=>a.effectiveMonth.localeCompare(b.effectiveMonth));
+    return applicable.length ? applicable[applicable.length-1].amount : env.monthlyAmount;
+  }
+  // start_month부터 toMonth까지, 각 달마다 그 달 시점의 충전액을 적용해 누적 적립액을 합산한다.
+  function creditedForEnvelope(env, fromMonth, toMonth){
+    let total = 0;
+    let m = fromMonth;
+    while(m <= toMonth){
+      total += monthlyAmountForMonth(env, m);
+      m = addMonths(m, 1);
+    }
+    return total;
+  }
   function rowToTx(r){ return { id:r.id, type:r.type, amount:r.amount, merchant:r.merchant, categoryId:r.category_id, subcat:r.subcat, payMethod:r.pay_method, fromId:r.from_id, toId:r.to_id, date:r.date, isRecurring:r.is_recurring||false, installmentCount:r.installment_count||null, installmentOverrides:r.installment_overrides||null }; }
   function txToRow(t){ return { id:t.id, type:t.type, amount:t.amount, merchant:t.merchant||null, category_id:t.categoryId||null, subcat:t.subcat||null, pay_method:t.payMethod||null, from_id:t.fromId||null, to_id:t.toId||null, date:t.date, is_recurring: !!t.isRecurring, installment_count: t.installmentCount||null, installment_overrides: t.installmentOverrides||null }; }
   function rowToFixed(r){ return { id:r.id, name:r.name, amount:r.amount, payDay:r.pay_day, payMethod:r.pay_method, installmentCount:r.installment_count||null, installmentStartMonth:r.installment_start_month||null, endMonth:r.end_month||null }; }
@@ -576,16 +612,55 @@
       // pay_methods 테이블이 비어있으면(신규 테이블 포함) 기본값 씨딩
       await sb.from('pay_methods').insert(DEFAULT_STATE.payMethods.map((p,i)=>payToRow(p,i)));
     }
+
+    // monthly_budgets는 SQL 마이그레이션을 아직 안 돌렸으면 테이블 자체가 없을 수 있어서 별도로, 실패해도 나머지 상태는 그대로 살린다
+    let monthlyBudgets = [];
+    try{
+      const { data: budgetRows, error: eBudget } = await sb.from('monthly_budgets').select('*');
+      if(eBudget) throw eBudget;
+      monthlyBudgets = (budgetRows||[]).map(rowToBudget);
+    }catch(err){
+      console.warn('monthly_budgets 테이블을 아직 사용할 수 없어요 (SQL 마이그레이션 필요할 수 있음):', err);
+    }
+
+    // envelope_rate_changes도 마찬가지로 SQL 마이그레이션(STEP 4) 전이면 테이블이 없을 수 있어 별도 처리
+    let envelopeRateChanges = [];
+    try{
+      const { data: rateRows, error: eRate } = await sb.from('envelope_rate_changes').select('*');
+      if(eRate) throw eRate;
+      envelopeRateChanges = (rateRows||[]).map(rowToRateChange);
+    }catch(err){
+      console.warn('envelope_rate_changes 테이블을 아직 사용할 수 없어요 (SQL 마이그레이션 필요할 수 있음):', err);
+    }
+
     return {
       livingCategories: livingRows.length ? livingRows.map(rowToLivingCat) : structuredClone(DEFAULT_STATE.livingCategories),
       irregularEnvelopes: irrRows.length ? irrRows.map(rowToIrregular) : structuredClone(DEFAULT_STATE.irregularEnvelopes),
       transactions: txRows.map(rowToTx),
       fixedExpenses: fixedRows.map(rowToFixed),
-      payMethods: payRows.length ? payRows.map(rowToPay) : structuredClone(DEFAULT_STATE.payMethods)
+      payMethods: payRows.length ? payRows.map(rowToPay) : structuredClone(DEFAULT_STATE.payMethods),
+      monthlyBudgets,
+      envelopeRateChanges
     };
   }
 
-  let state = { livingCategories:[], irregularEnvelopes:[], transactions:[], fixedExpenses:[], payMethods:[] };
+  // 꾸밈비/문화·취미/비정기(경조사 제외)를 '개인 용돈' Envelope으로 통합하는 1회성 이관.
+  // 실제 이관 작업은 Postgres 함수(migrate_personal_allowance_v2)가 원자적으로 처리한다 (supabase/migration_v2_envelopes.sql).
+  // idempotent: 이미 이관된 계정이면 함수 내부에서 즉시 종료되고 아무것도 바뀌지 않는다.
+  async function migratePersonalAllowance(){
+    const { error } = await sb.rpc('migrate_personal_allowance_v2');
+    if(error){
+      console.error('migratePersonalAllowance raw error:', JSON.stringify(error, null, 2));
+      const missingFn = error.code === '42883' || error.code === 'PGRST202' || /function .* does not exist/i.test(error.message||'') || /schema cache/i.test(error.message||'');
+      if(missingFn){
+        console.warn('migrate_personal_allowance_v2 RPC가 아직 없어요. supabase/migration_v2_envelopes.sql을 Supabase SQL Editor에서 먼저 실행해주세요.');
+      }else{
+        showToast('카테고리 구조 이관에 실패했어요');
+      }
+    }
+  }
+
+  let state = { livingCategories:[], irregularEnvelopes:[], transactions:[], fixedExpenses:[], payMethods:[], monthlyBudgets:[], envelopeRateChanges:[] };
   let viewDate = (function(){ const [y,m,d] = todayKST().split('-').map(Number); return new Date(y, m-1, d); })();
   let selectedCalDate = null;
   let nextColorIdx = 0;
@@ -615,6 +690,13 @@
     return `${ny}-${String(nm).padStart(2,'0')}`;
   }
 
+  // 할부 기본 월 금액: 마지막 회차는 반올림 오차를 몰아서 흡수해 합계가 원거래 금액과 정확히 일치하게 한다
+  function installmentBaseAmount(t, idx){
+    const base = Math.round(t.amount / t.installmentCount);
+    if(idx === t.installmentCount) return t.amount - base * (t.installmentCount - 1);
+    return base;
+  }
+
   function irregularContributions(envId, fromMonth, toMonth){
     const records = [];
     state.transactions.forEach(t=>{
@@ -626,7 +708,7 @@
           const mk = addMonths(originMonth, idx-1);
           if(mk < fromMonth || mk > toMonth) continue;
           const override = t.installmentOverrides && t.installmentOverrides[mk];
-          const amount = (override != null) ? override : Math.round(t.amount / t.installmentCount);
+          const amount = (override != null) ? override : installmentBaseAmount(t, idx);
           records.push({ month: mk, amount, subcat });
         }
       }else{
@@ -666,7 +748,7 @@
         const idx = elapsedMonths(startKey, viewKey);
         if(idx < 1 || idx > t.installmentCount) return;
         const override = t.installmentOverrides && t.installmentOverrides[viewKey];
-        const amt = (override != null) ? override : Math.round(t.amount / t.installmentCount);
+        const amt = (override != null) ? override : installmentBaseAmount(t, idx);
         let virtualDate = t.date;
         if(idx > 1){
           const [vy,vm] = viewKey.split('-').map(Number);
@@ -686,11 +768,12 @@
     document.getElementById('yearLabel').textContent = viewDate.getFullYear() + '년';
     document.getElementById('monthLabel').textContent = (viewDate.getMonth()+1) + '월';
 
-    const monthTx = expandMonthTx(monthKey(viewDate));
+    const vKey = monthKey(viewDate);
+    const monthTx = expandMonthTx(vKey);
     const livingTx = monthTx.filter(t=>t.type==='living');
     const irregularTxThisMonth = monthTx.filter(t=>t.type==='irregular');
-    const totalBudget = state.livingCategories.reduce((s,c)=>s+c.limit,0)
-      + state.irregularEnvelopes.reduce((s,e)=>s+e.monthlyAmount,0);
+    const totalBudget = state.livingCategories.reduce((s,c)=>s+getBudgetForCategory(c, vKey),0)
+      + state.irregularEnvelopes.reduce((s,e)=>s+monthlyAmountForMonth(e, vKey),0);
     const totalSpent = livingTx.reduce((s,t)=>s+t.amount,0) + irregularTxThisMonth.reduce((s,t)=>s+t.amount,0);
     const totalPct = totalBudget ? Math.min(100, (totalSpent/totalBudget)*100) : 0;
 
@@ -724,15 +807,16 @@
   function renderLiving(monthTx, livingTx){
     const listEl = document.getElementById('livingList');
     listEl.innerHTML = '';
+    const vKey = monthKey(viewDate);
     state.livingCategories.forEach(cat=>{
       const catTx = livingTx.filter(t=>t.categoryId===cat.id);
       const spent = catTx.reduce((s,t)=>s+t.amount,0);
-      const transfersIn = monthTx.filter(t=>t.type==='transfer' && t.toId===cat.id).reduce((s,t)=>s+t.amount,0);
-      const effectiveLimit = cat.limit + transfersIn;
-      const pct = effectiveLimit ? (spent/effectiveLimit)*100 : 0;
+      const budget = getBudgetForCategory(cat, vKey);
+      const isOverride = budget !== cat.limit;
+      const pct = budget ? (spent/budget)*100 : 0;
       const barPct = Math.min(100, pct);
       const color = statusColor(pct);
-      const remainCat = effectiveLimit - spent;
+      const remainCat = budget - spent;
 
       const subTotals = {};
       catTx.forEach(t=>{
@@ -743,9 +827,6 @@
       let subHtml = subEntries.length ? subEntries.map(([name,amt])=>
         `<div class="env-sub-row"><span>${name}</span><span>${fmt(amt)}원</span></div>`
       ).join('') : `<div class="env-sub-row"><span>세부 내역 없음</span><span></span></div>`;
-      if(transfersIn > 0){
-        subHtml += `<div class="env-sub-row"><span>비정기에서 충당</span><span>+${fmt(transfersIn)}원</span></div>`;
-      }
 
       const card = document.createElement('div');
       card.className = 'envelope';
@@ -756,15 +837,39 @@
         </div>
         <div class="env-numbers">
           <span class="env-spent">${fmt(spent)}원</span>
-          <span class="env-limit">/ ${fmt(effectiveLimit)}원${transfersIn>0?` <small style="opacity:.6">(기본 ${fmt(cat.limit)}+이체 ${fmt(transfersIn)})</small>`:''}</span>
+          <span class="env-limit">/ ${fmt(budget)}원${isOverride?` <small style="opacity:.6">(기본 ${fmt(cat.limit)})</small>`:''} <button class="mr-budget-edit" data-action="edit-budget" title="이번 달 예산 수정" style="border:none;background:none;cursor:pointer;opacity:.55;font-size:12px;">✎</button></span>
         </div>
         <div class="env-bar"><div class="env-bar-fill" style="width:${barPct}%; background:${color};"></div></div>
         <div class="env-remain">${remainCat>=0 ? `이번 달 <b>${fmt(remainCat)}원</b> 더 쓸 수 있어요` : `<b style="color:${color}">${fmt(Math.abs(remainCat))}원</b> 초과했어요`}</div>
         <div class="env-sub">${subHtml}</div>
       `;
-      card.addEventListener('click', ()=> card.classList.toggle('expanded'));
+      card.addEventListener('click', (e)=>{
+        if(e.target.closest('[data-action="edit-budget"]')) return;
+        card.classList.toggle('expanded');
+      });
+      card.querySelector('[data-action="edit-budget"]').addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        const input = prompt(`${vKey} ${cat.name} 예산 (기본 ${fmt(cat.limit)}원)`, budget);
+        if(input === null) return;
+        const amount = Math.max(0, parseInt(input,10) || 0);
+        await upsertMonthlyBudget(cat.id, vKey, amount);
+      });
       listEl.appendChild(card);
     });
+  }
+
+  async function upsertMonthlyBudget(categoryId, yearMonth, amount){
+    const existing = state.monthlyBudgets.find(b=>b.categoryId===categoryId && b.yearMonth===yearMonth);
+    const row = { id: existing ? existing.id : `mb_${categoryId}_${yearMonth}`, categoryId, yearMonth, amount };
+    const { error } = await sb.from('monthly_budgets').upsert(budgetToRow(row));
+    if(error){
+      showToast('예산 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)');
+      console.error(error);
+      return;
+    }
+    if(existing) existing.amount = amount; else state.monthlyBudgets.push(row);
+    render();
+    showToast(`${yearMonth} 예산을 수정했어요`);
   }
 
   function renderIrregular(){
@@ -772,27 +877,23 @@
     listEl.innerHTML = '';
     const vKey = monthKey(viewDate);
     state.irregularEnvelopes.forEach(env=>{
-      const months = elapsedMonths(env.startMonth, vKey);
-      const credited = env.monthlyAmount * months;
+      // 누적 적립액 = start_month부터 조회월까지, 각 달 시점에 유효했던 충전액을 합산 (rate 변경 이력 반영)
+      const credited = creditedForEnvelope(env, env.startMonth, vKey);
+      const thisMonthRate = monthlyAmountForMonth(env, vKey);
+      // 잔액 = 이월분 포함 누적 적립액 - 해당 Envelope에 귀속된 실제 지출액 (다른 카테고리 보정에 쓰이지 않음)
       const contributions = irregularContributions(env.id, env.startMonth, vKey);
       const spentAll = contributions.reduce((s,r)=>s+r.amount,0);
-      const transferredOutAll = state.transactions
-        .filter(t=>t.type==='transfer' && t.fromId===env.id && t.date.slice(0,7) >= env.startMonth && t.date.slice(0,7) <= vKey)
-        .reduce((s,t)=>s+t.amount,0);
-      const spentThisMonth = contributions.filter(r=>r.month===vKey).reduce((s,r)=>s+r.amount,0);
-      const balance = credited - spentAll - transferredOutAll;
+      const thisMonthContributions = contributions.filter(r=>r.month===vKey);
+      const spentThisMonth = thisMonthContributions.reduce((s,r)=>s+r.amount,0);
+      const balance = credited - spentAll;
 
+      // 서브카테고리 내역은 누적 전체가 아니라 "이번 달" 사용분만 보여준다 (누적 잔액 숫자만 전체 기간 반영)
       const subTotals = {};
-      contributions.forEach(r=>{ subTotals[r.subcat] = (subTotals[r.subcat]||0) + r.amount; });
+      thisMonthContributions.forEach(r=>{ subTotals[r.subcat] = (subTotals[r.subcat]||0) + r.amount; });
       const subEntries = Object.entries(subTotals).sort((a,b)=>b[1]-a[1]);
       let subHtml = subEntries.length ? subEntries.map(([name,amt])=>
         `<div class="env-sub-row"><span>${name}</span><span>${fmt(amt)}원</span></div>`
-      ).join('') : `<div class="env-sub-row"><span>세부 내역 없음</span><span></span></div>`;
-      const transferRows = state.transactions.filter(t=>t.type==='transfer' && t.fromId===env.id && t.date.slice(0,7) >= env.startMonth);
-      transferRows.forEach(t=>{
-        const toCat = state.livingCategories.find(c=>c.id===t.toId);
-        subHtml += `<div class="env-sub-row"><span>→ ${toCat?toCat.name:'(삭제됨)'}로 이체</span><span>-${fmt(t.amount)}원</span></div>`;
-      });
+      ).join('') : `<div class="env-sub-row"><span>이번 달 사용 내역 없음</span><span></span></div>`;
 
       const card = document.createElement('div');
       card.className = 'envelope irregular';
@@ -805,14 +906,38 @@
           <span class="irr-label">누적 잔액</span>
         </div>
         <div class="irr-foot">
-          <span>월 충전 ${fmt(env.monthlyAmount)}원</span>
+          <span>월 충전 ${fmt(thisMonthRate)}원 <button class="mr-budget-edit" data-action="edit-rate" title="이번 달부터 충전액 수정" style="border:none;background:none;cursor:pointer;opacity:.55;font-size:12px;">✎</button></span>
           <span>이번 달 사용 ${fmt(spentThisMonth)}원</span>
         </div>
         <div class="env-sub">${subHtml}</div>
       `;
-      card.addEventListener('click', ()=> card.classList.toggle('expanded'));
+      card.addEventListener('click', (e)=>{
+        if(e.target.closest('[data-action="edit-rate"]')) return;
+        card.classList.toggle('expanded');
+      });
+      card.querySelector('[data-action="edit-rate"]').addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        const input = prompt(`${vKey}부터 적용할 ${env.name} 월 충전액 (기본 ${fmt(env.monthlyAmount)}원)`, thisMonthRate);
+        if(input === null) return;
+        const amount = Math.max(0, parseInt(input,10) || 0);
+        await upsertEnvelopeRate(env.id, vKey, amount);
+      });
       listEl.appendChild(card);
     });
+  }
+
+  async function upsertEnvelopeRate(envelopeId, effectiveMonth, amount){
+    const existing = state.envelopeRateChanges.find(r=>r.envelopeId===envelopeId && r.effectiveMonth===effectiveMonth);
+    const row = { id: existing ? existing.id : `erc_${envelopeId}_${effectiveMonth}`, envelopeId, effectiveMonth, amount };
+    const { error } = await sb.from('envelope_rate_changes').upsert(rateChangeToRow(row));
+    if(error){
+      showToast('충전액 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)');
+      console.error(error);
+      return;
+    }
+    if(existing) existing.amount = amount; else state.envelopeRateChanges.push(row);
+    render();
+    showToast(`${effectiveMonth}부터 적용되는 충전액을 수정했어요`);
   }
 
   function renderFixed(){
@@ -945,10 +1070,13 @@
 
   function renderTxList(monthTx){
     const txListEl = document.getElementById('txList');
-    const filteredTx = currentView==='expense' ? monthTx.filter(t=>t.type==='living'||t.type==='irregular')
+    let filteredTx = currentView==='expense' ? monthTx.filter(t=>t.type==='living'||t.type==='irregular')
                       : currentView==='income' ? monthTx.filter(t=>t.type==='income')
                       : monthTx;
-    const fixedRows = (currentView==='expense' || currentView==='all') ? activeFixedExpenses(monthKey(viewDate)) : [];
+    if(currentView==='expense' && currentCatFilter){
+      filteredTx = filteredTx.filter(t=>t.categoryId===currentCatFilter);
+    }
+    const fixedRows = (!currentCatFilter && (currentView==='expense' || currentView==='all')) ? activeFixedExpenses(monthKey(viewDate)) : [];
     const fixedHtml = fixedRows.map(fixedPayRowHtml).join('');
     const sorted = [...filteredTx].sort((a,b)=>{
       if(currentSort === 'date_asc') return (a.date+a.id).localeCompare(b.date+b.id);
@@ -1205,7 +1333,7 @@
       chip.className = 'cat-chip';
       if(isCombined && state.irregularEnvelopes.some(e=>e.id===cat.id)){
         chip.style.borderStyle = 'dashed';
-        chip.title = '비정기 카테고리';
+        chip.title = '누적 카테고리';
       }
       chip.textContent = cat.name;
       if(cat.id===selectedCat) chip.classList.add('active');
@@ -1265,7 +1393,8 @@
       selectedType = editing.type;
       applyTypeVisibility();
       const override = editing.installmentOverrides && editing.installmentOverrides[editingInstMonth];
-      fAmount.value = (override != null) ? override : Math.round(editing.amount / editing.installmentCount);
+      const instIdx = elapsedMonths(editing.date.slice(0,7), editingInstMonth);
+      fAmount.value = (override != null) ? override : installmentBaseAmount(editing, instIdx);
       validateForm();
       backdrop.classList.add('show');
       sheet.classList.add('show');
@@ -1326,6 +1455,9 @@
     if(submitTx.disabled) return;
 
     if(editingInstMonth){
+      // 회차 override는 사용자가 그 달만 의도적으로 다른 금액을 쓰겠다는 수동 조정이라, 다른 회차 금액을
+      // 자동으로 재분배하지 않는다. 그 결과 회차 합계가 원래 할부 총액(t.amount)과 달라질 수 있는데, 이건
+      // 의도된 동작이다 (버그 아님).
       const origin = state.transactions.find(t=>t.id===editingId);
       if(!origin) return;
       submitTx.disabled = true;
@@ -1512,7 +1644,8 @@
           <input class="mr-name" data-field="name" value="${cat.name}">
           <button class="mr-del" data-action="del">✕</button>
         </div>
-        <div class="mr-line"><label>월 한도</label><input type="number" data-field="limit" value="${cat.limit}"></div>
+        <div class="mr-line"><label>기본 예산</label><input type="number" data-field="limit" value="${cat.limit}"></div>
+        <div class="mr-hint" style="font-size:11px; opacity:.55; margin:-4px 0 6px 0;">특정 달만 다르게 하려면 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요</div>
         <div class="mr-line"><label>소분류</label><input class="mr-sub" data-field="subcats" value="${(cat.subcats||[]).join(', ')}" placeholder="콤마로 구분"></div>
       `;
       row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
@@ -1540,11 +1673,12 @@
           <input class="mr-name" data-field="name" value="${env.name}">
           <button class="mr-del" data-action="del">✕</button>
         </div>
-        <div class="mr-line"><label>월 충전액</label><input type="number" data-field="monthlyAmount" value="${env.monthlyAmount}"></div>
+        <div class="mr-line"><label>기본 충전액</label><input type="number" data-field="monthlyAmount" value="${env.monthlyAmount}"></div>
+        <div class="mr-hint" style="font-size:11px; opacity:.55; margin:-4px 0 6px 0;">특정 달부터 다르게 하려면 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요</div>
         <div class="mr-line"><label>세부 목적</label><input class="mr-sub" data-field="subcats" value="${(env.subcats||[]).join(', ')}" placeholder="콤마로 구분"></div>
       `;
       row.querySelector('[data-action="del"]').addEventListener('click', async ()=>{
-        if(!confirm(`"${env.name}" 비정기 카테고리를 삭제할까요? 기존 지출 기록은 남아있어요.`)) return;
+        if(!confirm(`"${env.name}" 누적 카테고리를 삭제할까요? 기존 지출 기록은 남아있어요.`)) return;
         const { error } = await sb.from('irregular_envelopes').delete().eq('id', env.id);
         if(error){ showToast('삭제 실패'); console.error(error); return; }
         state.irregularEnvelopes = state.irregularEnvelopes.filter(c=>c.id!==env.id);
@@ -1646,7 +1780,7 @@
     buildLivingManage();
   });
   document.getElementById('addIrregular').addEventListener('click', ()=>{
-    state.irregularEnvelopes.push({ id:'irr_'+Date.now().toString(36), name:'새 비정기 카테고리', color:nextColor(), monthlyAmount:0, startMonth: monthKey(viewDate), subcats:[] });
+    state.irregularEnvelopes.push({ id:'irr_'+Date.now().toString(36), name:'새 누적 카테고리', color:nextColor(), monthlyAmount:0, startMonth: monthKey(viewDate), subcats:[] });
     buildIrregularManage();
   });
   document.getElementById('addFixed').addEventListener('click', ()=>{
@@ -1740,12 +1874,26 @@
   let currentView = 'all';
   let fixedSectionCollapsed = true;
   let currentSort = 'date_desc';
+  let currentCatFilter = '';
   const tabExpense = document.getElementById('tabExpense');
   const tabIncome = document.getElementById('tabIncome');
   const tabAll = document.getElementById('tabAll');
   const tabPay = document.getElementById('tabPay');
   const txListEl = document.getElementById('txList');
   const sortSelect = document.getElementById('sortSelect');
+  const catFilterSelect = document.getElementById('catFilterSelect');
+
+  function buildCatFilterOptions(){
+    const prev = catFilterSelect.value;
+    const livingOpts = state.livingCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    const irregularOpts = state.irregularEnvelopes.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+    catFilterSelect.innerHTML = `
+      <option value="">전체 카테고리</option>
+      <optgroup label="생활 카테고리">${livingOpts}</optgroup>
+      <optgroup label="누적 카테고리">${irregularOpts}</optgroup>
+    `;
+    if([...catFilterSelect.options].some(o=>o.value===prev)) catFilterSelect.value = prev;
+  }
 
   sortSelect.addEventListener('change', ()=>{
     currentSort = sortSelect.value;
@@ -1756,6 +1904,11 @@
     }else{
       renderTxList(expandMonthTx(monthKey(viewDate)));
     }
+  });
+  catFilterSelect.addEventListener('change', ()=>{
+    currentCatFilter = catFilterSelect.value;
+    txPage = 0;
+    renderTxList(expandMonthTx(monthKey(viewDate)));
   });
   document.getElementById('txPrevPage').addEventListener('click', ()=>{
     txPage--;
@@ -1782,6 +1935,15 @@
     document.getElementById('payMethodSummary').style.display = 'none';
     document.getElementById('payTxList').style.display = 'none';
     document.getElementById('payTxPager').style.display = 'none';
+
+    if(view==='expense'){
+      buildCatFilterOptions();
+      catFilterSelect.style.display = 'block';
+    }else{
+      catFilterSelect.style.display = 'none';
+      currentCatFilter = '';
+      catFilterSelect.value = '';
+    }
 
     if(view==='pay'){
       tabPay.classList.add('active');
@@ -1839,6 +2001,7 @@
     authScreen.style.display = 'none';
     shellEl.style.display = 'flex';
     document.getElementById('bottomNav').style.display = '';
+    await migratePersonalAllowance();
     state = await loadState();
     nextColorIdx = (state.livingCategories.length + state.irregularEnvelopes.length) % PALETTE.length;
     buildCatChoices();
