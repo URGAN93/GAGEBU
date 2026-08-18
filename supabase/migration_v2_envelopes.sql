@@ -23,8 +23,8 @@ declare
   the_uid uuid;
   remaining int;
 begin
-  -- 이 앱은 사실상 단일 사용자(panicaleweb@gmail.com) 앱이라 기존 행의 소유자를 이 계정으로 백필한다.
-  select id into the_uid from auth.users where email = 'panicaleweb@gmail.com' limit 1;
+  -- 이 앱은 사실상 단일 사용자(urgan93@gmail.com) 앱이라 기존 행의 소유자를 이 계정으로 백필한다.
+  select id into the_uid from auth.users where email = 'urgan93@gmail.com' limit 1;
 
   foreach tbl in array array['living_categories','irregular_envelopes','transactions','fixed_expenses','pay_methods'] loop
 
@@ -124,8 +124,10 @@ begin
     raise exception 'migrate_personal_allowance_v2: auth.uid() is null (인증된 사용자만 호출 가능)';
   end if;
 
+  -- id가 아니라 scope+name으로 판단한다: irregular_envelopes.id는 테이블 전체 유일 primary key라
+  -- 'allowance'라는 고정 문자열은 한 사용자만 가질 수 있다. 다른 사용자는 다른 id를 쓰므로 id로 찾으면 안 된다.
   select exists(
-    select 1 from public.irregular_envelopes where user_id = uid and id = 'allowance'
+    select 1 from public.irregular_envelopes where user_id = uid and scope = 'personal' and name = '개인 용돈'
   ) into allowance_exists;
 
   select * into beauty_row from public.living_categories where user_id = uid and id = 'beauty';
@@ -137,7 +139,10 @@ begin
 
   -- 개인 용돈 Envelope가 아직 없을 때만 새로 만든다. 이미 있으면(이름/금액/색을 사용자가 직접 바꿨을 수도
   -- 있으므로) 절대 덮어쓰지 않고 그대로 둔다 — 이게 재호출 시 값이 리셋되지 않는 핵심 idempotency 지점.
-  if not allowance_exists then
+  -- 그리고 beauty/culture/구버전 living-allowance/구버전 irregular1처럼 "이관할 옛날 데이터"가 실제로
+  -- 있을 때만 만든다 — 이관할 게 전혀 없는 완전히 새 사용자(예: 새로 가입한 배우자)는 이 함수가 아니라
+  -- create_household/join_household_by_code 쪽에서 처음부터 새로 세팅하므로 여기서는 손대지 않는다.
+  if not allowance_exists and (found_beauty or found_living_allowance or found_old_irr) then
     allowance_color := coalesce(beauty_row.color, living_allowance.color, '#B04338');
 
     -- 기본 subcats 순서를 우선하고, 기존 irregular1/구버전 living-allowance의 커스텀 subcat이 있으면
@@ -173,7 +178,7 @@ begin
 
     insert into public.irregular_envelopes (id, user_id, name, color, monthly_amount, start_month, subcats, sort_order)
     values (
-      'allowance', uid, '개인 용돈', allowance_color, 500000, allowance_start_month, allowance_subcats,
+      'allowance_' || replace(uid::text, '-', ''), uid, '개인 용돈', allowance_color, 500000, allowance_start_month, allowance_subcats,
       (select coalesce(max(sort_order), 0) + 1 from public.irregular_envelopes where user_id = uid)
     );
   end if;
