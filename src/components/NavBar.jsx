@@ -29,16 +29,11 @@ function Icon({ d }) {
   )
 }
 
-// 설정 시트는 Phase 7에서 실제로 붙는다 — 지금은 토스트만 띄운다.
-function onSettingsClick(showToast) {
-  showToast('설정 화면은 곧 추가돼요')
-}
-
 export default function NavBar() {
   const activeCol = useAppStore((s) => s.activeCol)
   const setActiveCol = useAppStore((s) => s.setActiveCol)
-  const showToast = useAppStore((s) => s.showToast)
   const openTxSheet = useAppStore((s) => s.openTxSheet)
+  const openSettingsSheet = useAppStore((s) => s.openSettingsSheet)
 
   return (
     <>
@@ -49,7 +44,7 @@ export default function NavBar() {
             <span>{item.label}</span>
           </button>
         ))}
-        <button className="sr-item" onClick={() => onSettingsClick(showToast)}>
+        <button className="sr-item" onClick={openSettingsSheet}>
           <Icon d={SETTINGS_ICON} />
           <span>설정</span>
         </button>
@@ -69,7 +64,7 @@ export default function NavBar() {
               <span>{item.label}</span>
             </button>
           ))}
-          <button className="bn-item" onClick={() => onSettingsClick(showToast)}>
+          <button className="bn-item" onClick={openSettingsSheet}>
             <Icon d={SETTINGS_ICON} />
             <span>설정</span>
           </button>

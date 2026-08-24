@@ -1,8 +1,18 @@
 import { create } from 'zustand'
 import { sb, PALETTE } from '../data/supabaseClient.js'
 import { resolveHousehold, loadState, migratePersonalAllowance, SupabaseUnreachableError } from '../data/loadState.js'
-import { budgetToRow, rateChangeToRow, txToRow, bonusCreditToRow } from '../data/converters.js'
-import { todayKST } from '../lib/calc.js'
+import {
+  budgetToRow,
+  rateChangeToRow,
+  txToRow,
+  bonusCreditToRow,
+  livingCatToRow,
+  irregularToRow,
+  fixedToRow,
+  payToRow,
+  incomeCatToRow,
+} from '../data/converters.js'
+import { todayKST, monthKey } from '../lib/calc.js'
 import { findCatPool } from '../lib/selectors.js'
 
 // viewDate(지금 보고 있는 달)는 캘린더/예산/분석 탭이 전부 공유하는 값이라 스토어에 둔다.
@@ -43,6 +53,7 @@ export const useAppStore = create((set, get) => ({
   txSheetOpen: false,
   editingTxId: null,
   editingInstMonth: null,
+  settingsSheetOpen: false,
   ...initialData,
 
   shiftMonth(delta) {
@@ -180,6 +191,137 @@ export const useAppStore = create((set, get) => ({
         : [...s.envelopeRateChanges, row],
     }))
     get().showToast(`${effectiveMonth}부터 적용되는 충전액을 수정했어요`)
+  },
+
+  openSettingsSheet() {
+    set({ settingsSheetOpen: true })
+  },
+  closeSettingsSheet() {
+    set({ settingsSheetOpen: false })
+  },
+
+  nextColor() {
+    const s = get()
+    const c = PALETTE[s.nextColorIdx % PALETTE.length]
+    set({ nextColorIdx: s.nextColorIdx + 1 })
+    return c
+  },
+
+  addLivingCategory() {
+    set((s) => ({
+      livingCategories: [...s.livingCategories, { id: 'cat_' + Date.now().toString(36), name: '새 카테고리', color: get().nextColor(), limit: 0, subcats: [] }],
+    }))
+  },
+  addIrregularEnvelope() {
+    set((s) => ({
+      irregularEnvelopes: [
+        ...s.irregularEnvelopes,
+        { id: 'irr_' + Date.now().toString(36), name: '새 누적 카테고리', color: get().nextColor(), monthlyAmount: 0, startMonth: monthKey(s.viewDate), subcats: [], scope: 'personal' },
+      ],
+    }))
+  },
+  addFixedExpense() {
+    set((s) => ({ fixedExpenses: [...s.fixedExpenses, { id: 'fixed_' + Date.now().toString(36), name: '새 항목', amount: 0 }] }))
+  },
+  addPayMethod() {
+    set((s) => ({ payMethods: [...s.payMethods, { id: 'pay_' + Date.now().toString(36), name: '새 결제수단' }] }))
+  },
+
+  // 카테고리/봉투/고정지출/결제수단 삭제는 원본처럼 저장하기 버튼을 기다리지 않고 그 자리에서 바로 반영됨.
+  async deleteLivingCategory(id) {
+    if (get().livingCategories.length <= 1) {
+      get().showToast('최소 1개는 있어야 해요')
+      return { ok: false }
+    }
+    const { error } = await sb.from('living_categories').delete().eq('id', id)
+    if (error) {
+      get().showToast('삭제 실패')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ livingCategories: s.livingCategories.filter((c) => c.id !== id) }))
+    return { ok: true }
+  },
+  async deleteIrregularEnvelope(id) {
+    const { error } = await sb.from('irregular_envelopes').delete().eq('id', id)
+    if (error) {
+      get().showToast('삭제 실패')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ irregularEnvelopes: s.irregularEnvelopes.filter((c) => c.id !== id) }))
+    return { ok: true }
+  },
+  async deleteFixedExpense(id) {
+    const { error } = await sb.from('fixed_expenses').delete().eq('id', id)
+    if (error) {
+      get().showToast('삭제 실패')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ fixedExpenses: s.fixedExpenses.filter((f) => f.id !== id) }))
+    return { ok: true }
+  },
+  async deletePayMethod(id) {
+    const { error } = await sb.from('pay_methods').delete().eq('id', id)
+    if (error) {
+      get().showToast('삭제 실패')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ payMethods: s.payMethods.filter((p) => p.id !== id) }))
+    return { ok: true }
+  },
+
+  async toggleFixedEnd(id) {
+    const f = get().fixedExpenses.find((x) => x.id === id)
+    if (!f) return
+    const closing = !f.endMonth
+    const newEndMonth = closing ? monthKey(get().viewDate) : null
+    const { error } = await sb.from('fixed_expenses').update({ end_month: newEndMonth }).eq('id', id)
+    if (error) {
+      get().showToast('처리 실패')
+      console.error(error)
+      return
+    }
+    set((s) => ({ fixedExpenses: s.fixedExpenses.map((x) => (x.id === id ? { ...x, endMonth: newEndMonth } : x)) }))
+    get().showToast(closing ? '마감 처리했어요' : '마감을 취소했어요')
+  },
+
+  // 드래그로 순서 바꾼 뒤 확정된 id 순서를 로컬 배열 순서에 반영 (Supabase에는 저장하기 버튼을 눌러야 반영됨 — 원본과 동일)
+  reorderList(listKey, orderedIds) {
+    set((s) => {
+      const byId = new Map(s[listKey].map((item) => [item.id, item]))
+      return { [listKey]: orderedIds.map((id) => byId.get(id)).filter(Boolean) }
+    })
+  },
+
+  // 설정 시트 "저장하기" — 5개 테이블을 한 번에 upsert. drafts는 SettingsSheet가 들고 있던 미저장 편집값.
+  async saveSettings(drafts) {
+    const s = get()
+    const livingCategories = s.livingCategories.map((c) => ({ ...c, ...drafts.living[c.id] }))
+    const irregularEnvelopes = s.irregularEnvelopes.map((e) => ({ ...e, ...drafts.irregular[e.id] }))
+    const fixedExpenses = s.fixedExpenses.map((f) => ({ ...f, ...drafts.fixed[f.id] }))
+    const payMethods = s.payMethods.map((p) => ({ ...p, ...drafts.pay[p.id] }))
+    const incomeCategories = s.incomeCategories.map((c) => ({ ...c, ...drafts.income[c.id] }))
+
+    const { error: e1 } = await sb.from('living_categories').upsert(livingCategories.map((c, i) => livingCatToRow(c, i, s.household)))
+    const { error: e2 } = await sb.from('irregular_envelopes').upsert(irregularEnvelopes.map((e, i) => irregularToRow(e, i, s.household)))
+    const { error: e3 } = await sb.from('fixed_expenses').upsert(fixedExpenses.map((f, i) => fixedToRow(f, i, s.household)))
+    const { error: e4 } = await sb.from('pay_methods').upsert(payMethods.map((p, i) => payToRow(p, i)))
+    let e5 = null
+    if (s.household && incomeCategories.length) {
+      const { error } = await sb.from('income_categories').upsert(incomeCategories.map((c, i) => incomeCatToRow(c, i, s.household)))
+      e5 = error
+    }
+    if (e1 || e2 || e3 || e4 || e5) {
+      get().showToast('저장 실패, 다시 시도해주세요')
+      console.error(e1, e2, e3, e4, e5)
+      return { ok: false }
+    }
+    set({ livingCategories, irregularEnvelopes, fixedExpenses, payMethods, incomeCategories, settingsSheetOpen: false })
+    get().showToast('카테고리 설정을 저장했어요')
+    return { ok: true }
   },
 
   showToast(message) {

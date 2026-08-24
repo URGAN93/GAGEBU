@@ -9,6 +9,7 @@ import CalendarScreen from './screens/CalendarScreen.jsx'
 import BudgetScreen from './screens/BudgetScreen.jsx'
 import AnalysisScreen from './screens/AnalysisScreen.jsx'
 import TxModal from './components/TxModal.jsx'
+import SettingsSheet from './components/SettingsSheet.jsx'
 
 function App() {
   const authStatus = useAppStore((s) => s.authStatus)
@@ -52,6 +53,7 @@ function App() {
             </div>
           </div>
           <TxModal />
+          <SettingsSheet />
         </div>
       )}
     </>
