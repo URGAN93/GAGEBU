@@ -223,6 +223,7 @@
 
   .side-rail{ display:none; }
   .col-calendar, .col-analysis, .col-budget{ display:none; }
+  .col-calendar{ touch-action:pan-y; }
   .app-cols[data-active="calendar"] .col-calendar{ display:block; }
   .app-cols[data-active="analysis"] .col-analysis{ display:block; }
   .app-cols[data-active="budget"] .col-budget{ display:block; }
@@ -1431,7 +1432,15 @@
     calGrid.querySelectorAll('.cal-day[data-date]').forEach(cell=>{
       cell.addEventListener('click', ()=> showCalDay(cell.dataset.date, monthTx));
     });
-    if(todayStr.slice(0,7) === monthKey(viewDate)) showCalDay(todayStr, monthTx);
+    if(todayStr.slice(0,7) === monthKey(viewDate)){
+      showCalDay(todayStr, monthTx);
+    }else{
+      // 실제 오늘이 속한 달이 아니면, 이전 달에서 선택했던 날짜 내역이 그대로 남아있지 않도록 비워준다
+      selectedCalDate = null;
+      const dayList = document.getElementById('calDayList');
+      dayList.style.display = 'none';
+      dayList.innerHTML = '';
+    }
   }
 
   function showCalDay(dateStr, monthTx){
@@ -2258,6 +2267,7 @@
     btn.addEventListener('click', ()=> setActiveCol(btn.dataset.col));
   });
 
+
   document.getElementById('saveSettings').addEventListener('click', async ()=>{
     livingManage.querySelectorAll('.manage-row').forEach(row=>{
       const cat = state.livingCategories.find(c=>c.id===row.dataset.id);
@@ -2408,16 +2418,74 @@
   tabAll.addEventListener('click', ()=>switchView('all'));
   tabPay.addEventListener('click', ()=>switchView('pay'));
 
-  document.getElementById('prevMonth').addEventListener('click', ()=>{
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
+  function shiftMonth(delta){
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+delta, 1);
     render();
     if(currentView==='pay'){ renderPayMethodSummary(expandMonthTx(monthKey(viewDate))); }
-  });
-  document.getElementById('nextMonth').addEventListener('click', ()=>{
-    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
-    render();
-    if(currentView==='pay'){ renderPayMethodSummary(expandMonthTx(monthKey(viewDate))); }
-  });
+  }
+  document.getElementById('prevMonth').addEventListener('click', ()=> shiftMonth(-1));
+  document.getElementById('nextMonth').addEventListener('click', ()=> shiftMonth(1));
+
+  // ── 달력 좌우 스와이프로 월 이동 (터치/마우스/펜 모두 지원 - 태블릿 포함) ──
+  (function setupCalendarSwipe(){
+    const swipeArea = document.getElementById('colCalendar');
+    const calGrid = document.getElementById('calGrid');
+    const DIR_LOCK = 10;   // 이 이상 움직여야 좌우/상하 스와이프 방향을 확정
+    const COMMIT = 60;     // 이 이상 밀어야 월 이동으로 인정
+    let startX = 0, startY = 0, lastX = 0, dragging = false, isHorizontal = null, maxDrag = 0, activePointerId = null;
+
+    swipeArea.addEventListener('pointerdown', (e)=>{
+      if(window.innerWidth >= 760) return; // 태블릿/데스크탑 레이아웃에서는 스와이프 비활성화
+      if(activePointerId !== null) return;
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      activePointerId = e.pointerId;
+      startX = lastX = e.clientX;
+      startY = e.clientY;
+      dragging = true;
+      isHorizontal = null;
+      maxDrag = calGrid.clientWidth || swipeArea.clientWidth;
+      calGrid.style.transition = 'none';
+    });
+
+    swipeArea.addEventListener('pointermove', (e)=>{
+      if(!dragging || e.pointerId !== activePointerId) return;
+      const x = e.clientX, y = e.clientY;
+      const dx = x - startX, dy = y - startY;
+      lastX = x;
+      if(isHorizontal === null){
+        if(Math.abs(dx) > DIR_LOCK || Math.abs(dy) > DIR_LOCK) isHorizontal = Math.abs(dx) > Math.abs(dy);
+      }
+      if(isHorizontal){
+        e.preventDefault();
+        // 끝까지 밀어도 화면 폭(maxDrag) 이상은 넘어가지 않도록 고정
+        const clamped = Math.max(-maxDrag, Math.min(maxDrag, dx));
+        calGrid.style.transform = `translateX(${clamped}px)`;
+      }
+    });
+
+    function endDrag(e){
+      if(!dragging || (e && e.pointerId !== activePointerId)) return;
+      dragging = false;
+      activePointerId = null;
+      const dx = lastX - startX;
+      if(isHorizontal && (dx <= -COMMIT || dx >= COMMIT)){
+        const dir = dx < 0 ? 1 : -1; // 1: 다음 달, -1: 이전 달
+        calGrid.style.transition = 'transform 0.18s ease';
+        calGrid.style.transform = `translateX(${-dir*maxDrag}px)`;
+        setTimeout(()=>{
+          calGrid.style.transition = 'none';
+          calGrid.style.transform = 'translateX(0)';
+          shiftMonth(dir);
+        }, 180);
+      }else{
+        calGrid.style.transition = 'transform 0.2s ease';
+        calGrid.style.transform = 'translateX(0)';
+      }
+      isHorizontal = null;
+    }
+    swipeArea.addEventListener('pointerup', endDrag);
+    swipeArea.addEventListener('pointercancel', endDrag);
+  })();
 
   document.querySelectorAll('.section-label[data-toggle]').forEach(label=>{
     label.addEventListener('click', ()=>{
