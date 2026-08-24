@@ -167,3 +167,13 @@ export function settlementsForCategoryRange(transactions, categoryId, fromMonth,
     )
     .reduce((s, t) => s + t.amount, 0)
 }
+
+// 분석 탭 내역 리스트 정렬 — date_desc가 기본값
+export function sortTx(list, sort) {
+  return [...list].sort((a, b) => {
+    if (sort === 'date_asc') return (a.date + a.id).localeCompare(b.date + b.id)
+    if (sort === 'amount_desc') return b.amount - a.amount
+    if (sort === 'amount_asc') return a.amount - b.amount
+    return (b.date + b.id).localeCompare(a.date + a.id)
+  })
+}
