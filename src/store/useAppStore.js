@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 import { sb, PALETTE } from '../data/supabaseClient.js'
 import { resolveHousehold, loadState, migratePersonalAllowance, SupabaseUnreachableError } from '../data/loadState.js'
+import { todayKST } from '../lib/calc.js'
+
+// viewDate(지금 보고 있는 달)는 캘린더/예산/분석 탭이 전부 공유하는 값이라 스토어에 둔다.
+// (오늘 이 화면 저 화면 다니면서 같은 달 데이터를 봐야 하므로, 화면별 로컬 state로 두면 안 맞물린다.)
+function initialViewDate() {
+  const [y, m, d] = todayKST().split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
 
 // authStatus 상태 전이: loading → (signed-out | needs-household | ready)
 // 원본의 startApp()/finishStartup() 패턴을 그대로 옮기되, DOM 화면 show/hide 대신 이 상태값으로 어떤
@@ -27,7 +35,12 @@ export const useAppStore = create((set, get) => ({
   authStatus: 'loading', // 'loading' | 'signed-out' | 'needs-household' | 'ready'
   toast: null,
   nextColorIdx: 0,
+  viewDate: initialViewDate(),
   ...initialData,
+
+  shiftMonth(delta) {
+    set((s) => ({ viewDate: new Date(s.viewDate.getFullYear(), s.viewDate.getMonth() + delta, 1) }))
+  },
 
   showToast(message) {
     set({ toast: message })

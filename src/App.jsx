@@ -3,6 +3,8 @@ import { useAppStore } from './store/useAppStore.js'
 import { sb } from './data/supabaseClient.js'
 import AuthScreen from './components/AuthScreen.jsx'
 import HouseholdSetupScreen from './components/HouseholdSetupScreen.jsx'
+import Header from './components/Header.jsx'
+import CalendarScreen from './screens/CalendarScreen.jsx'
 
 function App() {
   const authStatus = useAppStore((s) => s.authStatus)
@@ -40,12 +42,19 @@ function App() {
       {authStatus === 'signed-out' && <AuthScreen />}
       {authStatus === 'needs-household' && <HouseholdSetupScreen />}
       {authStatus === 'ready' && (
-        <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-          <h1>가계부 (React 마이그레이션 진행 중)</h1>
-          <p>Phase 2 완료: 로그인/가구 설정까지 연결됨. {household ? `가구: ${household.name}` : '(가구 없음 상태로 진행 중인 v2 계정)'}</p>
-          <button className="add-row-btn" onClick={signOut}>
-            로그아웃
-          </button>
+        <div className="shell">
+          <div className="app">
+            <Header />
+            <div className="app-cols" data-active="calendar">
+              <CalendarScreen />
+            </div>
+            <div style={{ padding: '12px 0', fontSize: 12, color: 'var(--ink-soft)' }}>
+              Phase 3 진행 중 — 예산/분석 탭은 아직 없음. {household ? `가구: ${household.name}` : '(가구 없음, v2 계정)'}{' '}
+              <button className="add-row-btn" style={{ display: 'inline', width: 'auto', padding: '4px 10px' }} onClick={signOut}>
+                로그아웃
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
