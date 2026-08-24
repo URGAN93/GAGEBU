@@ -14,8 +14,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || '가계부';
   const options = {
     body: data.body || '',
-    icon: '/192x192.png',
-    badge: '/32x32.png',
+    icon: './192x192.png',
+    badge: './32x32.png',
     data: { url: data.url || './' },
     tag: data.tag || undefined
   };
