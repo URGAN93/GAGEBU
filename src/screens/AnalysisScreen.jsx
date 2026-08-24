@@ -22,6 +22,7 @@ export default function AnalysisScreen() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
+  const openTxSheet = useAppStore((s) => s.openTxSheet)
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
   const vKey = monthKey(viewDate)
@@ -214,7 +215,7 @@ export default function AnalysisScreen() {
                       {fixedPayRows.map((f) => (
                         <FixedTxRow key={f.id} f={f} vKey={vKey} />
                       ))}
-                      {payFiltered.length > 0 && payPageTx.map((t) => <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} />)}
+                      {payFiltered.length > 0 && payPageTx.map((t) => <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} onClick={openTxSheet} />)}
                     </>
                   )}
                 </div>
@@ -257,7 +258,7 @@ export default function AnalysisScreen() {
                         <div style={{ padding: '10px 16px 4px 16px', fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', opacity: 0.55, letterSpacing: 0.5 }}>이번 달 내역</div>
                       )}
                       {pageTx.map((t) => (
-                        <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} />
+                        <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} onClick={openTxSheet} />
                       ))}
                     </>
                   )}

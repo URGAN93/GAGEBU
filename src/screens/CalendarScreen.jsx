@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { expandMonthTx, fmtMan, monthKey, todayKST } from '../lib/calc.js'
 import { useSwipeMonth } from '../hooks/useSwipeMonth.js'
@@ -13,11 +13,12 @@ export default function CalendarScreen() {
   const incomeCategories = useAppStore((s) => s.incomeCategories)
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
+  const selectedCalDate = useAppStore((s) => s.selectedCalDate)
+  const setSelectedCalDate = useAppStore((s) => s.setSelectedCalDate)
+  const openTxSheet = useAppStore((s) => s.openTxSheet)
 
   const viewKey = monthKey(viewDate)
   const monthTx = useMemo(() => expandMonthTx(transactions, viewKey), [transactions, viewKey])
-
-  const [selectedCalDate, setSelectedCalDate] = useState(null)
 
   // 달이 바뀌면: 실제 오늘이 속한 달이면 오늘을 자동 선택, 아니면 선택 해제.
   // (예전 vanilla 버전에서 이걸 깜빡해서 하단 리스트가 이전 달 내역인 채로 남아있던 버그가 있었다 —
@@ -25,6 +26,7 @@ export default function CalendarScreen() {
   useEffect(() => {
     const todayStr = todayKST()
     setSelectedCalDate(todayStr.slice(0, 7) === viewKey ? todayStr : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewKey])
 
   const handleSwipe = useCallback((dir) => shiftMonth(dir), [shiftMonth])
@@ -86,7 +88,7 @@ export default function CalendarScreen() {
             {dayTx.length === 0 ? (
               <div className="tx-empty">{selectedCalDate.slice(5).replace('-', '.')}에는 지출이 없어요.</div>
             ) : (
-              dayTx.map((t) => <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} />)
+              dayTx.map((t) => <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} onClick={openTxSheet} />)
             )}
           </div>
         )}

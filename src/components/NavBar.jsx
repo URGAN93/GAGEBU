@@ -38,6 +38,7 @@ export default function NavBar() {
   const activeCol = useAppStore((s) => s.activeCol)
   const setActiveCol = useAppStore((s) => s.setActiveCol)
   const showToast = useAppStore((s) => s.showToast)
+  const openTxSheet = useAppStore((s) => s.openTxSheet)
 
   return (
     <>
@@ -54,7 +55,11 @@ export default function NavBar() {
         </button>
       </nav>
 
-      {activeCol === 'calendar' && <button className="fab">+ 내역 추가</button>}
+      {activeCol === 'calendar' && (
+        <button className="fab" onClick={() => openTxSheet(null)}>
+          + 내역 추가
+        </button>
+      )}
 
       <nav className="bottom-nav">
         <div className="bottom-nav-inner">

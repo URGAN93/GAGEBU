@@ -8,6 +8,7 @@ import NavBar from './components/NavBar.jsx'
 import CalendarScreen from './screens/CalendarScreen.jsx'
 import BudgetScreen from './screens/BudgetScreen.jsx'
 import AnalysisScreen from './screens/AnalysisScreen.jsx'
+import TxModal from './components/TxModal.jsx'
 
 function App() {
   const authStatus = useAppStore((s) => s.authStatus)
@@ -29,17 +30,13 @@ function App() {
 
   useEffect(() => {
     if (!toast) return
-    const timer = setTimeout(clearToast, 3000)
+    const timer = setTimeout(clearToast, 1800)
     return () => clearTimeout(timer)
   }, [toast, clearToast])
 
   return (
     <>
-      {toast && (
-        <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', background: 'var(--ink)', color: 'var(--paper)', padding: '10px 16px', borderRadius: 10, fontSize: 13, zIndex: 999 }}>
-          {toast}
-        </div>
-      )}
+      <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>
       {authStatus === 'loading' && null}
       {authStatus === 'signed-out' && <AuthScreen />}
       {authStatus === 'needs-household' && <HouseholdSetupScreen />}
@@ -54,6 +51,7 @@ function App() {
               <AnalysisScreen />
             </div>
           </div>
+          <TxModal />
         </div>
       )}
     </>
