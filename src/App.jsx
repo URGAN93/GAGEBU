@@ -4,16 +4,18 @@ import { sb } from './data/supabaseClient.js'
 import AuthScreen from './components/AuthScreen.jsx'
 import HouseholdSetupScreen from './components/HouseholdSetupScreen.jsx'
 import Header from './components/Header.jsx'
+import NavBar from './components/NavBar.jsx'
 import CalendarScreen from './screens/CalendarScreen.jsx'
+import BudgetScreen from './screens/BudgetScreen.jsx'
+import AnalysisScreen from './screens/AnalysisScreen.jsx'
 
 function App() {
   const authStatus = useAppStore((s) => s.authStatus)
   const toast = useAppStore((s) => s.toast)
   const clearToast = useAppStore((s) => s.clearToast)
-  const signOut = useAppStore((s) => s.signOut)
   const checkSession = useAppStore((s) => s.checkSession)
   const bootstrap = useAppStore((s) => s.bootstrap)
-  const household = useAppStore((s) => s.household)
+  const activeCol = useAppStore((s) => s.activeCol)
 
   useEffect(() => {
     checkSession()
@@ -43,16 +45,13 @@ function App() {
       {authStatus === 'needs-household' && <HouseholdSetupScreen />}
       {authStatus === 'ready' && (
         <div className="shell">
+          <NavBar />
           <div className="app">
             <Header />
-            <div className="app-cols" data-active="calendar">
+            <div className="app-cols" data-active={activeCol}>
               <CalendarScreen />
-            </div>
-            <div style={{ padding: '12px 0', fontSize: 12, color: 'var(--ink-soft)' }}>
-              Phase 3 진행 중 — 예산/분석 탭은 아직 없음. {household ? `가구: ${household.name}` : '(가구 없음, v2 계정)'}{' '}
-              <button className="add-row-btn" style={{ display: 'inline', width: 'auto', padding: '4px 10px' }} onClick={signOut}>
-                로그아웃
-              </button>
+              <BudgetScreen />
+              <AnalysisScreen />
             </div>
           </div>
         </div>

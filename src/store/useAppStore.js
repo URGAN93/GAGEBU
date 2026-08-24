@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { sb, PALETTE } from '../data/supabaseClient.js'
 import { resolveHousehold, loadState, migratePersonalAllowance, SupabaseUnreachableError } from '../data/loadState.js'
+import { budgetToRow, rateChangeToRow } from '../data/converters.js'
 import { todayKST } from '../lib/calc.js'
 
 // viewDate(지금 보고 있는 달)는 캘린더/예산/분석 탭이 전부 공유하는 값이라 스토어에 둔다.
@@ -36,10 +37,48 @@ export const useAppStore = create((set, get) => ({
   toast: null,
   nextColorIdx: 0,
   viewDate: initialViewDate(),
+  activeCol: 'calendar', // 'calendar' | 'budget' | 'analysis'
   ...initialData,
 
   shiftMonth(delta) {
     set((s) => ({ viewDate: new Date(s.viewDate.getFullYear(), s.viewDate.getMonth() + delta, 1) }))
+  },
+  setActiveCol(col) {
+    set({ activeCol: col })
+  },
+
+  async upsertMonthlyBudget(categoryId, yearMonth, amount) {
+    const existing = get().monthlyBudgets.find((b) => b.categoryId === categoryId && b.yearMonth === yearMonth)
+    const row = { id: existing ? existing.id : `mb_${categoryId}_${yearMonth}`, categoryId, yearMonth, amount }
+    const { error } = await sb.from('monthly_budgets').upsert(budgetToRow(row, get().household))
+    if (error) {
+      get().showToast('예산 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)')
+      console.error(error)
+      return
+    }
+    set((s) => ({
+      monthlyBudgets: existing
+        ? s.monthlyBudgets.map((b) => (b === existing ? row : b))
+        : [...s.monthlyBudgets, row],
+    }))
+    get().showToast(`${yearMonth} 예산을 수정했어요`)
+  },
+
+  async upsertEnvelopeRate(envelopeId, effectiveMonth, amount) {
+    const existing = get().envelopeRateChanges.find((r) => r.envelopeId === envelopeId && r.effectiveMonth === effectiveMonth)
+    const row = { id: existing ? existing.id : `erc_${envelopeId}_${effectiveMonth}`, envelopeId, effectiveMonth, amount }
+    const { error } = await sb.from('envelope_rate_changes').upsert(rateChangeToRow(row))
+    if (error) {
+      get().showToast('충전액 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)')
+      console.error(error)
+      return
+    }
+    set((s) => ({
+      envelopeRateChanges: existing
+        ? s.envelopeRateChanges.map((r) => (r === existing ? row : r))
+        : [...s.envelopeRateChanges, row],
+    }))
+    get().showToast(`${effectiveMonth}부터 적용되는 충전액을 수정했어요`)
   },
 
   showToast(message) {
