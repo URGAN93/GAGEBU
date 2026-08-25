@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { expandMonthTx, monthKey, fmt, activeFixedExpenses, sortTx } from '../lib/calc.js'
+import {
+  expandMonthTx,
+  monthKey,
+  fmt,
+  activeFixedExpenses,
+  sortTx,
+  getBudgetForCategory,
+  settlementsForCategory,
+  settlementsForCategoryRange,
+  creditedForEnvelope,
+  monthlyAmountForMonth,
+  irregularContributions,
+} from '../lib/calc.js'
+import { statusColor } from '../lib/theme.js'
 import TxRow from '../components/TxRow.jsx'
 import FixedTxRow from '../components/FixedTxRow.jsx'
 import Pager from '../components/Pager.jsx'
@@ -22,6 +35,9 @@ export default function AnalysisScreen() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
+  const monthlyBudgets = useAppStore((s) => s.monthlyBudgets)
+  const envelopeRateChanges = useAppStore((s) => s.envelopeRateChanges)
+  const envelopeBonusCredits = useAppStore((s) => s.envelopeBonusCredits)
   const openTxSheet = useAppStore((s) => s.openTxSheet)
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
@@ -94,6 +110,32 @@ export default function AnalysisScreen() {
   const payEntries = Object.entries(payTotals).sort((a, b) => b[1] - a[1])
 
   // 원본과 동일하게, 이번 달 활성화된 고정지출이 아니라 등록된 전체 고정지출에서 결제수단으로 필터한다
+  // ── 카테고리 필터 선택 시 상단에 보여줄 지출/예산 요약 ──
+  const filterCat = currentView === 'expense' && currentCatFilter ? livingCategories.find((c) => c.id === currentCatFilter) : null
+  const filterEnv = currentView === 'expense' && currentCatFilter ? irregularEnvelopes.find((e) => e.id === currentCatFilter) : null
+
+  let catSummary = null
+  if (filterCat) {
+    const catSpent = monthTx.filter((t) => t.type === 'living' && t.categoryId === filterCat.id).reduce((s, t) => s + t.amount, 0)
+    const catSettled = settlementsForCategory(transactions, filterCat.id, vKey)
+    const effectiveSpent = catSpent - catSettled
+    const budget = getBudgetForCategory(monthlyBudgets, filterCat, vKey)
+    const pct = budget ? (effectiveSpent / budget) * 100 : 0
+    const remain = budget - effectiveSpent
+    catSummary = { effectiveSpent, budget, pct, remain }
+  } else if (filterEnv) {
+    const credited = creditedForEnvelope(envelopeRateChanges, envelopeBonusCredits, filterEnv, filterEnv.startMonth, vKey)
+    const contributions = irregularContributions(transactions, filterEnv.id, filterEnv.startMonth, vKey)
+    const spentAll = contributions.reduce((s, r) => s + r.amount, 0)
+    const settledAll = settlementsForCategoryRange(transactions, filterEnv.id, filterEnv.startMonth, vKey)
+    const balance = credited - (spentAll - settledAll)
+    const thisMonthRate = monthlyAmountForMonth(envelopeRateChanges, filterEnv, vKey)
+    const spentThisMonth = contributions.filter((r) => r.month === vKey).reduce((s, r) => s + r.amount, 0)
+    const settledThisMonth = settlementsForCategory(transactions, filterEnv.id, vKey)
+    const effectiveSpentThisMonth = settledThisMonth > 0 ? spentThisMonth - settledThisMonth : spentThisMonth
+    catSummary = { isEnvelope: true, effectiveSpentThisMonth, thisMonthRate, balance }
+  }
+
   const fixedPayRows = selectedPayFilter ? fixedExpenses.filter((f) => f.payMethod === selectedPayFilter) : []
   const payFiltered = selectedPayFilter
     ? sortTx(
@@ -183,6 +225,41 @@ export default function AnalysisScreen() {
               ))}
             </optgroup>
           </select>
+        )}
+
+        {catSummary && !catSummary.isEnvelope && (
+          <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+            <div className="env-numbers">
+              <span className="env-spent">{fmt(catSummary.effectiveSpent)}원</span>
+              <span className="env-limit"> / {fmt(catSummary.budget)}원</span>
+            </div>
+            <div className="env-bar">
+              <div className="env-bar-fill" style={{ width: Math.min(100, Math.max(0, catSummary.pct)) + '%', background: statusColor(catSummary.pct) }} />
+            </div>
+            <div className="env-remain" style={{ marginTop: 4 }}>
+              {catSummary.remain >= 0 ? (
+                <>
+                  이번 달 <b>{fmt(catSummary.remain)}원</b> 더 쓸 수 있어요
+                </>
+              ) : (
+                <>
+                  <b style={{ color: statusColor(catSummary.pct) }}>{fmt(Math.abs(catSummary.remain))}원</b> 초과했어요
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {catSummary && catSummary.isEnvelope && (
+          <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+            <div className="env-numbers">
+              <span className="env-spent">{fmt(catSummary.effectiveSpentThisMonth)}원</span>
+              <span className="env-limit"> / 월 충전 {fmt(catSummary.thisMonthRate)}원</span>
+            </div>
+            <div className="irr-foot" style={{ marginTop: 4 }}>
+              <span>누적 잔액 {fmt(catSummary.balance)}원</span>
+            </div>
+          </div>
         )}
 
         {currentView === 'pay' ? (
