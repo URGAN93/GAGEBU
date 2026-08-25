@@ -10,7 +10,6 @@ import {
   rowToIncomeCat,
   incomeCatToRow,
   rowToBonusCredit,
-  rowToNotifSettings,
   rowToTx,
   rowToFixed,
   rowToPay,
@@ -182,21 +181,6 @@ export async function loadState(household, myUserId, members) {
     console.warn('income_categories 테이블을 아직 사용할 수 없어요 (SQL v3 마이그레이션 필요할 수 있음):', err)
   }
 
-  // notification_settings + push_subscriptions (SQL v4)
-  let notificationSettings = structuredClone(DEFAULT_STATE.notificationSettings)
-  let pushSubscribed = false
-  try {
-    const [{ data: notifRows, error: eNotif }, { data: subRows, error: eSub }] = await Promise.all([
-      sb.from('notification_settings').select('*').limit(1),
-      sb.from('push_subscriptions').select('id').limit(1),
-    ])
-    if (eNotif) throw eNotif
-    if (notifRows && notifRows.length) notificationSettings = rowToNotifSettings(notifRows[0])
-    if (!eSub) pushSubscribed = !!(subRows && subRows.length)
-  } catch (err) {
-    console.warn('notification_settings/push_subscriptions 테이블을 아직 사용할 수 없어요 (SQL v4 마이그레이션 필요할 수 있음):', err)
-  }
-
   return {
     livingCategories: livingRows.length ? livingRows.map(rowToLivingCat) : structuredClone(DEFAULT_STATE.livingCategories),
     irregularEnvelopes: irrRows.length ? irrRows.map(rowToIrregular) : structuredClone(DEFAULT_STATE.irregularEnvelopes),
@@ -210,8 +194,6 @@ export async function loadState(household, myUserId, members) {
     household: household || null,
     myUserId: myUserId || null,
     householdMembers: members || [],
-    notificationSettings,
-    pushSubscribed,
   }
 }
 

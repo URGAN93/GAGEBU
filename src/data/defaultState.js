@@ -49,5 +49,4 @@ export const DEFAULT_STATE = {
   monthlyBudgets: [],
   envelopeRateChanges: [],
   envelopeBonusCredits: [],
-  notificationSettings: { dailyReminderEnabled: true, dailyReminderHour: 21 },
 }

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { fmt, monthKey, isFixedActiveNow, fixedInstallmentIndex, nowMonthKey, addMonths } from '../lib/calc.js'
 import { useDragReorder } from '../hooks/useDragReorder.js'
-import { pushSupported } from '../lib/push.js'
 
 function useDraft() {
   const [draft, setDraft] = useState({})
@@ -177,41 +176,6 @@ function PayRow({ p, draftApi, onDelete }) {
           ✕
         </button>
       </div>
-    </div>
-  )
-}
-
-function NotifSection() {
-  const pushSubscribed = useAppStore((s) => s.pushSubscribed)
-  const notificationSettings = useAppStore((s) => s.notificationSettings)
-  const subscribeToPush = useAppStore((s) => s.subscribeToPush)
-  const unsubscribeFromPush = useAppStore((s) => s.unsubscribeFromPush)
-  const saveNotificationSettings = useAppStore((s) => s.saveNotificationSettings)
-  const supported = pushSupported()
-
-  return (
-    <div className="settings-group">
-      <h4>알림</h4>
-      <button className="add-row-btn" disabled={!supported} onClick={() => (pushSubscribed ? unsubscribeFromPush() : subscribeToPush())}>
-        {supported ? (pushSubscribed ? '알림 끄기' : '알림 켜기') : '이 브라우저는 알림을 지원하지 않아요'}
-      </button>
-      {supported && pushSubscribed && (
-        <div style={{ marginTop: 12 }}>
-          <div className="mr-line">
-            <label>매일 기록 리마인드 시각</label>
-            <select value={notificationSettings.dailyReminderHour} onChange={(e) => saveNotificationSettings(parseInt(e.target.value, 10))}>
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>
-                  {h}시
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="mr-hint" style={{ fontSize: 11, opacity: 0.6 }}>
-            설정 바꾸면 자동 저장돼요
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -439,8 +403,6 @@ export default function SettingsSheet() {
           </div>
         </div>
       )}
-
-      <NotifSection />
 
       <button className="sheet-submit" onClick={handleSave}>
         저장하기

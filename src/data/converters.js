@@ -101,19 +101,6 @@ export function bonusCreditToRow(b) {
   return { id: b.id, envelope_id: b.envelopeId, month: b.month, amount: b.amount, note: b.note || null }
 }
 
-export function rowToNotifSettings(r) {
-  return { dailyReminderEnabled: r.daily_reminder_enabled, dailyReminderHour: r.daily_reminder_hour }
-}
-
-export function notifSettingsToRow(s, myUserId) {
-  return {
-    user_id: myUserId,
-    daily_reminder_enabled: s.dailyReminderEnabled,
-    daily_reminder_hour: s.dailyReminderHour,
-    updated_at: new Date().toISOString(),
-  }
-}
-
 // 카테고리(생활 or 누적)의 household_id: 생활 카테고리와 scope='household' 누적 카테고리는 가계부 공유,
 // scope='personal' 누적 카테고리(개인용돈 등)는 배우자에게 안 보이도록 null 유지
 export function categoryHouseholdId(categoryId, { household, irregularEnvelopes, livingCategories, incomeCategories }) {
