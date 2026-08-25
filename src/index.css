@@ -13,7 +13,9 @@
     --shadow: 0 10px 26px rgba(19,42,51,0.16);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{scrollbar-gutter:stable;}
   html,body{margin:0;padding:0;}
+  #root{width:100%;}
   body{
     font-family:'Pretendard', -apple-system, sans-serif;
     background:
@@ -132,7 +134,7 @@
   .pay-pill.active .pp-name{ color:var(--gold-soft); opacity:1; }
   .pay-pill.active .pp-amt{ color:var(--paper); }
 
-  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; min-width:0; }
   .cal-dow{ text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); opacity:0.5; padding-bottom:4px; }
   .cal-day{ aspect-ratio:1; border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; gap:2px; background:var(--paper-dim); color:var(--ink-soft); }
   .cal-day.empty{ background:transparent; cursor:default; }
@@ -231,6 +233,4 @@
     .side-rail{ display:flex; flex-direction:column; align-items:center; gap:20px; width:64px; flex-shrink:0; padding-top:36px; position:sticky; top:20px; }
     .bottom-nav{ display:none; }
     .fab{ bottom:calc(22px + env(safe-area-inset-bottom,0)); }
-    .calendar-wrap{ display:grid; grid-template-columns:1fr 340px; gap:16px; align-items:start; }
-    .calendar-wrap #calDayList{ margin-top:0; }
   }
