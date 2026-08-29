@@ -66,7 +66,9 @@ export default function AnalysisScreen() {
 
   const fixedTotal = activeFixed.reduce((s, f) => s + f.amount, 0)
   const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-  const expense = monthTx.filter((t) => t.type === 'living' || t.type === 'irregular').reduce((s, t) => s + t.amount, 0) + fixedTotal
+  const settled = monthTx.filter((t) => t.type === 'settlement').reduce((s, t) => s + t.amount, 0)
+  const rawExpense = monthTx.filter((t) => t.type === 'living' || t.type === 'irregular').reduce((s, t) => s + t.amount, 0) + fixedTotal
+  const expense = rawExpense - settled
 
   // ── 지출/수입/정산/합계 리스트 ──
   let filteredTx =
@@ -168,7 +170,18 @@ export default function AnalysisScreen() {
               <span className="tx-merchant">총 지출</span>
               <span className="tx-amt">{fmt(expense)}원</span>
             </div>
+            {settled > 0 && (
+              <div className="tx-item">
+                <span className="tx-merchant">정산받은 금액</span>
+                <span className="tx-amt">+{fmt(settled)}원</span>
+              </div>
+            )}
           </div>
+          {settled > 0 && (
+            <div style={{ fontSize: 11, opacity: 0.6, margin: '-8px 0 0 4px' }}>
+              실지출 {fmt(rawExpense)}원 − 정산 {fmt(settled)}원 = 실질 지출 {fmt(expense)}원
+            </div>
+          )}
         </div>
         {!revealed && <div id="analysisBlurHint">탭하면 금액이 보여요</div>}
       </div>
