@@ -193,12 +193,7 @@
   .manage-row.dragging{ opacity:0.6; box-shadow:0 6px 16px rgba(19,42,51,0.22); position:relative; z-index:5; }
   .manage-row-top{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .mr-drag{ cursor:grab; touch-action:none; color:var(--ink-soft); opacity:0.4; font-size:16px; padding:2px 4px; flex-shrink:0; }
-  .mr-toggle{ cursor:pointer; }
   .mr-amt-preview{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft); opacity:0.75; white-space:nowrap; }
-  .mr-toggle .chevron{ font-size:11px; opacity:0.5; transition:transform .2s ease; flex-shrink:0; }
-  .manage-row.expanded .mr-toggle .chevron{ transform:rotate(180deg); }
-  .mr-body{ max-height:0; overflow:hidden; transition:max-height .3s ease; }
-  .manage-row.expanded .mr-body{ max-height:400px; margin-top:8px; }
   .manage-dot{ width:10px;height:10px;border-radius:50%; flex-shrink:0; }
   .manage-row input.mr-name{ flex:1; border:none; border-bottom:1.5px solid var(--line); padding:4px 2px; font-weight:700; font-size:14.5px; background:transparent; }
   .manage-row input.mr-name:focus{ outline:none; border-color:var(--gold); }

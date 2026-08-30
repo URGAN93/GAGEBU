@@ -18,6 +18,22 @@ import { findCatPool } from '../lib/selectors.js'
 import { VAPID_PUBLIC_KEY } from '../data/supabaseClient.js'
 import { urlBase64ToUint8Array, registerServiceWorker } from '../lib/push.js'
 
+// "이 달부터" 변경 이력(생활 예산/누적 충전액)에 공통되는 upsert 로직. id는 매칭 필드+effectiveMonth로
+// 결정되므로, 있으면 그 id로 덮어쓰고 없으면 새로 만든다 — 두 스토어 액션(upsertLivingBudgetRate/
+// upsertEnvelopeRate)이 테이블명·필드명·토스트 문구만 다르고 나머지는 완전히 같아서 여기로 뽑아냈다.
+async function upsertRateChange(get, set, { list, listKey, table, toRow, idPrefix, keyField, keyValue, effectiveMonth, amount, failMsg, successMsg }) {
+  const existing = list.find((r) => r[keyField] === keyValue && r.effectiveMonth === effectiveMonth)
+  const row = { id: existing ? existing.id : `${idPrefix}_${keyValue}_${effectiveMonth}`, [keyField]: keyValue, effectiveMonth, amount }
+  const { error } = await sb.from(table).upsert(toRow(row, get().household))
+  if (error) {
+    get().showToast(failMsg)
+    console.error(error)
+    return
+  }
+  set({ [listKey]: existing ? list.map((r) => (r === existing ? row : r)) : [...list, row] })
+  get().showToast(successMsg)
+}
+
 // viewDate(지금 보고 있는 달)는 캘린더/예산/분석 탭이 전부 공유하는 값이라 스토어에 둔다.
 // (오늘 이 화면 저 화면 다니면서 같은 달 데이터를 봐야 하므로, 화면별 로컬 state로 두면 안 맞물린다.)
 function initialViewDate() {
@@ -163,37 +179,35 @@ export const useAppStore = create((set, get) => ({
   },
 
   async upsertLivingBudgetRate(categoryId, effectiveMonth, amount) {
-    const existing = get().livingBudgetChanges.find((b) => b.categoryId === categoryId && b.effectiveMonth === effectiveMonth)
-    const row = { id: existing ? existing.id : `lbc_${categoryId}_${effectiveMonth}`, categoryId, effectiveMonth, amount }
-    const { error } = await sb.from('living_budget_changes').upsert(budgetChangeToRow(row, get().household))
-    if (error) {
-      get().showToast('예산 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)')
-      console.error(error)
-      return
-    }
-    set((s) => ({
-      livingBudgetChanges: existing
-        ? s.livingBudgetChanges.map((b) => (b === existing ? row : b))
-        : [...s.livingBudgetChanges, row],
-    }))
-    get().showToast(`${effectiveMonth}부터 적용되는 예산을 수정했어요`)
+    await upsertRateChange(get, set, {
+      list: get().livingBudgetChanges,
+      listKey: 'livingBudgetChanges',
+      table: 'living_budget_changes',
+      toRow: budgetChangeToRow,
+      idPrefix: 'lbc',
+      keyField: 'categoryId',
+      keyValue: categoryId,
+      effectiveMonth,
+      amount,
+      failMsg: '예산 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)',
+      successMsg: `${effectiveMonth}부터 적용되는 예산을 수정했어요`,
+    })
   },
 
   async upsertEnvelopeRate(envelopeId, effectiveMonth, amount) {
-    const existing = get().envelopeRateChanges.find((r) => r.envelopeId === envelopeId && r.effectiveMonth === effectiveMonth)
-    const row = { id: existing ? existing.id : `erc_${envelopeId}_${effectiveMonth}`, envelopeId, effectiveMonth, amount }
-    const { error } = await sb.from('envelope_rate_changes').upsert(rateChangeToRow(row))
-    if (error) {
-      get().showToast('충전액 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)')
-      console.error(error)
-      return
-    }
-    set((s) => ({
-      envelopeRateChanges: existing
-        ? s.envelopeRateChanges.map((r) => (r === existing ? row : r))
-        : [...s.envelopeRateChanges, row],
-    }))
-    get().showToast(`${effectiveMonth}부터 적용되는 충전액을 수정했어요`)
+    await upsertRateChange(get, set, {
+      list: get().envelopeRateChanges,
+      listKey: 'envelopeRateChanges',
+      table: 'envelope_rate_changes',
+      toRow: rateChangeToRow,
+      idPrefix: 'erc',
+      keyField: 'envelopeId',
+      keyValue: envelopeId,
+      effectiveMonth,
+      amount,
+      failMsg: '충전액 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)',
+      successMsg: `${effectiveMonth}부터 적용되는 충전액을 수정했어요`,
+    })
   },
 
   openSettingsSheet() {
@@ -295,18 +309,14 @@ export const useAppStore = create((set, get) => ({
     get().showToast('고정지출을 수정했어요')
   },
 
+  // updateFixedExpense와 똑같이 upsert를 쓴다 — update()였을 때는 방금 추가만 하고 아직 "저장하기"를
+  // 안 누른(= DB에 아직 없는) 고정지출에 마감을 누르면 0건 갱신으로 조용히 씹히는 문제가 있었다.
   async toggleFixedEnd(id) {
     const f = get().fixedExpenses.find((x) => x.id === id)
     if (!f) return
     const closing = !f.endMonth
     const newEndMonth = closing ? monthKey(get().viewDate) : null
-    const { error } = await sb.from('fixed_expenses').update({ end_month: newEndMonth }).eq('id', id)
-    if (error) {
-      get().showToast('처리 실패')
-      console.error(error)
-      return
-    }
-    set((s) => ({ fixedExpenses: s.fixedExpenses.map((x) => (x.id === id ? { ...x, endMonth: newEndMonth } : x)) }))
+    await get().updateFixedExpense(id, { endMonth: newEndMonth })
     get().showToast(closing ? '마감 처리했어요' : '마감을 취소했어요')
   },
 

@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { fmt, monthKey, isFixedActiveNow, fixedInstallmentIndex, nowMonthKey, addMonths } from '../lib/calc.js'
+import { fmt, monthKey, fixedInstallmentIndex, nowMonthKey, addMonths } from '../lib/calc.js'
 
-export default function FixedExpenseCard({ f, vKey }) {
+export default function FixedExpenseCard({ f, vKey, active }) {
   const payMethods = useAppStore((s) => s.payMethods)
   const viewDate = useAppStore((s) => s.viewDate)
   const updateFixedExpense = useAppStore((s) => s.updateFixedExpense)
   const toggleFixedEnd = useAppStore((s) => s.toggleFixedEnd)
   const [expanded, setExpanded] = useState(false)
 
-  const active = isFixedActiveNow(f)
   const idx = fixedInstallmentIndex(f, vKey)
 
   async function handleEditAmount(e) {
@@ -33,7 +32,8 @@ export default function FixedExpenseCard({ f, vKey }) {
       await updateFixedExpense(f.id, { installmentCount: null, installmentStartMonth: null })
       return
     }
-    const idxInput = prompt('현재 몇 회차인가요? (예: 14)', '1')
+    const currentIdx = f.installmentCount ? fixedInstallmentIndex(f, nowMonthKey()) : null
+    const idxInput = prompt('현재 몇 회차인가요? (예: 14)', currentIdx || '1')
     if (idxInput === null) return
     const curIdx = Math.max(1, parseInt(idxInput, 10) || 1)
     await updateFixedExpense(f.id, { installmentCount: count, installmentStartMonth: addMonths(nowMonthKey(), -(curIdx - 1)) })

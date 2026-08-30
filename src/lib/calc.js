@@ -120,21 +120,23 @@ export function expandMonthTx(transactions, viewKey) {
   return result
 }
 
-// 생활 카테고리의 특정 달 예산: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 cat.limit(기본값)
-// (누적 카테고리 monthlyAmountForMonth와 완전히 같은 방식 — "이번 달만 예외"가 아니라 "이 달부터 쭉" 변경)
-export function budgetAmountForMonth(livingBudgetChanges, cat, yearMonth) {
-  const applicable = livingBudgetChanges
-    .filter((c) => c.categoryId === cat.id && c.effectiveMonth <= yearMonth)
+// "이 달부터" 변경 이력 목록에서 특정 달 시점에 유효한 가장 최근 값을 찾고, 없으면 기본값을 돌려준다.
+// 생활 카테고리 예산(budgetAmountForMonth)과 누적 카테고리 충전액(monthlyAmountForMonth)이 공유하는 로직.
+function latestRateChange(changes, matchKey, matchValue, yearMonth, fallback) {
+  const applicable = changes
+    .filter((c) => c[matchKey] === matchValue && c.effectiveMonth <= yearMonth)
     .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth))
-  return applicable.length ? applicable[applicable.length - 1].amount : cat.limit
+  return applicable.length ? applicable[applicable.length - 1].amount : fallback
+}
+
+// 생활 카테고리의 특정 달 예산: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 cat.limit(기본값)
+export function budgetAmountForMonth(livingBudgetChanges, cat, yearMonth) {
+  return latestRateChange(livingBudgetChanges, 'categoryId', cat.id, yearMonth, cat.limit)
 }
 
 // 누적 카테고리의 특정 달 충전액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 env.monthlyAmount(기본값)
 export function monthlyAmountForMonth(envelopeRateChanges, env, yearMonth) {
-  const applicable = envelopeRateChanges
-    .filter((r) => r.envelopeId === env.id && r.effectiveMonth <= yearMonth)
-    .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth))
-  return applicable.length ? applicable[applicable.length - 1].amount : env.monthlyAmount
+  return latestRateChange(envelopeRateChanges, 'envelopeId', env.id, yearMonth, env.monthlyAmount)
 }
 
 // start_month부터 toMonth까지, 각 달마다 그 달 시점의 충전액을 적용해 누적 적립액을 합산하고,
