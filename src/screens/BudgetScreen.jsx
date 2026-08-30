@@ -1,11 +1,11 @@
 import { useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { expandMonthTx, monthKey, activeFixedExpenses } from '../lib/calc.js'
+import { expandMonthTx, monthKey, isFixedActiveNow } from '../lib/calc.js'
 import Passbook from '../components/Passbook.jsx'
 import SectionToggle from '../components/SectionToggle.jsx'
 import LivingEnvelopeCard from '../components/LivingEnvelopeCard.jsx'
 import IrregularEnvelopeCard from '../components/IrregularEnvelopeCard.jsx'
-import FixedExpenseList from '../components/FixedExpenseList.jsx'
+import FixedExpenseCard from '../components/FixedExpenseCard.jsx'
 
 export default function BudgetScreen() {
   const viewDate = useAppStore((s) => s.viewDate)
@@ -16,7 +16,13 @@ export default function BudgetScreen() {
 
   const vKey = monthKey(viewDate)
   const livingTx = useMemo(() => expandMonthTx(transactions, vKey).filter((t) => t.type === 'living'), [transactions, vKey])
-  const activeFixed = useMemo(() => activeFixedExpenses(fixedExpenses, vKey), [fixedExpenses, vKey])
+  const sortedFixed = useMemo(() => {
+    return [...fixedExpenses].sort((a, b) => {
+      const aActive = isFixedActiveNow(a)
+      const bActive = isFixedActiveNow(b)
+      return aActive === bActive ? 0 : aActive ? -1 : 1
+    })
+  }, [fixedExpenses])
 
   return (
     <div className="col-budget">
@@ -39,7 +45,15 @@ export default function BudgetScreen() {
       </SectionToggle>
 
       <SectionToggle title="고정지출" defaultCollapsed>
-        <FixedExpenseList items={activeFixed} vKey={vKey} />
+        {sortedFixed.length ? (
+          <div className="envelopes">
+            {sortedFixed.map((f) => (
+              <FixedExpenseCard key={f.id} f={f} vKey={vKey} />
+            ))}
+          </div>
+        ) : (
+          <div className="tx-empty">등록된 고정지출이 없어요.</div>
+        )}
       </SectionToggle>
     </div>
   )

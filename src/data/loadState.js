@@ -5,7 +5,7 @@ import {
   livingCatToRow,
   rowToIrregular,
   irregularToRow,
-  rowToBudget,
+  rowToBudgetChange,
   rowToRateChange,
   rowToIncomeCat,
   incomeCatToRow,
@@ -133,14 +133,14 @@ export async function loadState(household, myUserId, members) {
     )
   }
 
-  // monthly_budgets는 SQL 마이그레이션을 아직 안 돌렸으면 테이블 자체가 없을 수 있어서 별도로, 실패해도 나머지 상태는 그대로 살린다
-  let monthlyBudgets = []
+  // living_budget_changes는 SQL 마이그레이션(v5)을 아직 안 돌렸으면 테이블 자체가 없을 수 있어서 별도로, 실패해도 나머지 상태는 그대로 살린다
+  let livingBudgetChanges = []
   try {
-    const { data: budgetRows, error: eBudget } = await sb.from('monthly_budgets').select('*')
+    const { data: budgetRows, error: eBudget } = await sb.from('living_budget_changes').select('*')
     if (eBudget) throw eBudget
-    monthlyBudgets = (budgetRows || []).map(rowToBudget)
+    livingBudgetChanges = (budgetRows || []).map(rowToBudgetChange)
   } catch (err) {
-    console.warn('monthly_budgets 테이블을 아직 사용할 수 없어요 (SQL 마이그레이션 필요할 수 있음):', err)
+    console.warn('living_budget_changes 테이블을 아직 사용할 수 없어요 (SQL 마이그레이션 필요할 수 있음):', err)
   }
 
   // envelope_rate_changes도 마찬가지로 SQL 마이그레이션(STEP 4) 전이면 테이블이 없을 수 있어 별도 처리
@@ -187,7 +187,7 @@ export async function loadState(household, myUserId, members) {
     transactions: txRows.map(rowToTx),
     fixedExpenses: fixedRows.map(rowToFixed),
     payMethods: payRows.length ? payRows.map(rowToPay) : structuredClone(DEFAULT_STATE.payMethods),
-    monthlyBudgets,
+    livingBudgetChanges,
     envelopeRateChanges,
     envelopeBonusCredits,
     incomeCategories: incomeCategories.length ? incomeCategories : household ? [] : structuredClone(DEFAULT_STATE.incomeCategories),

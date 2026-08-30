@@ -3,7 +3,7 @@ import { useAppStore } from '../store/useAppStore.js'
 const NAV_ITEMS = [
   {
     col: 'calendar',
-    label: '내가계부',
+    label: '데이터',
     icon: 'M7 2v2H5a2 2 0 0 0-2 2v2h18V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zM3 10v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10H3zm4 3h4v4H7v-4z',
   },
   {

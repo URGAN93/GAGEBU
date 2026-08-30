@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { fmt, monthKey, isFixedActiveNow, fixedInstallmentIndex, nowMonthKey, addMonths } from '../lib/calc.js'
+import { fmt, isFixedActiveNow } from '../lib/calc.js'
 import { useDragReorder } from '../hooks/useDragReorder.js'
 
 function useDraft() {
@@ -26,15 +26,11 @@ function LivingRow({ cat, draftApi, onDelete }) {
         </button>
       </div>
       <div className="mr-line">
-        <label>기본 예산</label>
-        <input type="number" value={draftApi.get(cat, 'limit')} onChange={(e) => draftApi.update(cat.id, 'limit', e.target.value)} />
-      </div>
-      <div className="mr-hint" style={{ fontSize: 11, opacity: 0.55, margin: '-4px 0 6px 0' }}>
-        특정 달만 다르게 하려면 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요
-      </div>
-      <div className="mr-line">
         <label>소분류</label>
         <input className="mr-sub" value={draftApi.get(cat, 'subcats_text') ?? (cat.subcats || []).join(', ')} placeholder="콤마로 구분" onChange={(e) => draftApi.update(cat.id, 'subcats_text', e.target.value)} />
+      </div>
+      <div className="mr-hint" style={{ fontSize: 11, opacity: 0.55, margin: '-4px 0 6px 0' }}>
+        예산 금액은 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요
       </div>
     </div>
   )
@@ -52,15 +48,11 @@ function IrregularRow({ env, draftApi, onDelete }) {
         </button>
       </div>
       <div className="mr-line">
-        <label>기본 충전액</label>
-        <input type="number" value={draftApi.get(env, 'monthlyAmount')} onChange={(e) => draftApi.update(env.id, 'monthlyAmount', e.target.value)} />
-      </div>
-      <div className="mr-hint" style={{ fontSize: 11, opacity: 0.55, margin: '-4px 0 6px 0' }}>
-        특정 달부터 다르게 하려면 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요
-      </div>
-      <div className="mr-line">
         <label>세부 목적</label>
         <input className="mr-sub" value={draftApi.get(env, 'subcats_text') ?? (env.subcats || []).join(', ')} placeholder="콤마로 구분" onChange={(e) => draftApi.update(env.id, 'subcats_text', e.target.value)} />
+      </div>
+      <div className="mr-hint" style={{ fontSize: 11, opacity: 0.55, margin: '-4px 0 6px 0' }}>
+        충전액은 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요
       </div>
     </div>
   )
@@ -81,86 +73,21 @@ function IncomeRow({ cat, draftApi }) {
   )
 }
 
-function FixedRow({ f, draftApi, onDelete, onToggleEnd, payMethods }) {
-  const [expanded, setExpanded] = useState(false)
+function FixedRow({ f, draftApi, onDelete }) {
   const active = isFixedActiveNow(f)
-  const currentIdx = f.installmentCount ? fixedInstallmentIndex(f, nowMonthKey()) : ''
   return (
-    <div className={`manage-row${expanded ? ' expanded' : ''}`} data-id={f.id} style={!active ? { opacity: 0.5 } : undefined}>
-      <div
-        className="manage-row-top mr-toggle"
-        onClick={(e) => {
-          if (e.target.closest('.mr-name') || e.target.closest('.mr-del')) return
-          setExpanded((v) => !v)
-        }}
-      >
+    <div className="manage-row" data-id={f.id} style={!active ? { opacity: 0.5 } : undefined}>
+      <div className="manage-row-top">
         <input className="mr-name" value={draftApi.get(f, 'name')} onChange={(e) => draftApi.update(f.id, 'name', e.target.value)} />
         <span className="mr-amt-preview">
           {fmt(f.amount)}원{active ? '' : ' · 비활성'}
         </span>
-        <span className="chevron">▾</span>
-        <button
-          className="mr-del"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete(f)
-          }}
-        >
+        <button className="mr-del" onClick={() => onDelete(f)}>
           ✕
         </button>
       </div>
-      <div className="mr-body">
-        <div className="mr-line">
-          <label>금액</label>
-          <input type="number" value={draftApi.get(f, 'amount')} onChange={(e) => draftApi.update(f.id, 'amount', e.target.value)} />
-        </div>
-        <div className="mr-line">
-          <label>결제수단</label>
-          <select value={draftApi.get(f, 'payMethod') ?? ''} onChange={(e) => draftApi.update(f.id, 'payMethod', e.target.value)}>
-            <option value="">선택 안 함</option>
-            {payMethods.map((p) => (
-              <option key={p.id} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mr-line">
-          <label>총 할부개월</label>
-          <input
-            type="number"
-            min="1"
-            max="120"
-            placeholder="계속 반복"
-            value={draftApi.get(f, 'installmentCount') ?? f.installmentCount ?? ''}
-            onChange={(e) => draftApi.update(f.id, 'installmentCount', e.target.value)}
-          />
-        </div>
-        <div className="mr-line">
-          <label>현재 회차</label>
-          <input
-            type="number"
-            min="1"
-            placeholder="예: 14"
-            value={draftApi.get(f, 'installmentCurrentIdx') ?? currentIdx}
-            onChange={(e) => draftApi.update(f.id, 'installmentCurrentIdx', e.target.value)}
-          />
-        </div>
-        <div className="mr-line" style={{ alignItems: 'center' }}>
-          <label>마감</label>
-          <span style={{ flex: 1, fontSize: 12.5, color: 'var(--ink-soft)' }}>{f.endMonth ? `${f.endMonth}부터 종료됨` : '계속 진행 중'}</span>
-          <button
-            type="button"
-            className="add-row-btn mr-end-btn"
-            style={{ width: 'auto', padding: '6px 12px', fontSize: 12, margin: 0 }}
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleEnd(f)
-            }}
-          >
-            {f.endMonth ? '마감 취소' : '마감'}
-          </button>
-        </div>
+      <div className="mr-hint" style={{ fontSize: 11, opacity: 0.55, margin: '-4px 0 6px 0' }}>
+        금액/결제수단/할부/마감은 예산 화면 카드에서 수정하세요
       </div>
     </div>
   )
@@ -190,7 +117,6 @@ export default function SettingsSheet() {
   const payMethods = useAppStore((s) => s.payMethods)
   const household = useAppStore((s) => s.household)
   const householdMembers = useAppStore((s) => s.householdMembers)
-  const viewDate = useAppStore((s) => s.viewDate)
 
   const addLivingCategory = useAppStore((s) => s.addLivingCategory)
   const addIrregularEnvelope = useAppStore((s) => s.addIrregularEnvelope)
@@ -200,7 +126,6 @@ export default function SettingsSheet() {
   const deleteIrregularEnvelope = useAppStore((s) => s.deleteIrregularEnvelope)
   const deleteFixedExpense = useAppStore((s) => s.deleteFixedExpense)
   const deletePayMethod = useAppStore((s) => s.deletePayMethod)
-  const toggleFixedEnd = useAppStore((s) => s.toggleFixedEnd)
   const reorderList = useAppStore((s) => s.reorderList)
   const saveSettings = useAppStore((s) => s.saveSettings)
   const signOut = useAppStore((s) => s.signOut)
@@ -251,15 +176,6 @@ export default function SettingsSheet() {
     if (!confirm(`"${p.name}" 결제수단을 삭제할까요?`)) return
     await deletePayMethod(p.id)
   }
-  async function handleToggleEnd(f) {
-    const closing = !f.endMonth
-    if (closing) {
-      const newEndMonth = monthKey(viewDate)
-      if (!confirm(`"${f.name}"을(를) ${newEndMonth}부터(이번 달부터) 고정지출 목록에서 안 보이게 할까요? 이전 기록은 그대로 남아있어요.`)) return
-    }
-    await toggleFixedEnd(f.id)
-  }
-
   function parseSubcats(text) {
     return text
       .split(',')
@@ -301,21 +217,7 @@ export default function SettingsSheet() {
     fixedExpenses.forEach((f) => {
       const d = fixedDraft.draft[f.id]
       if (!d) return
-      const patch = {
-        name: d.name?.trim() || f.name,
-        amount: d.amount != null ? Math.max(0, parseInt(d.amount, 10) || 0) : f.amount,
-        payMethod: d.payMethod !== undefined ? d.payMethod || null : f.payMethod,
-      }
-      const instCount = parseInt(d.installmentCount, 10)
-      const instIdx = parseInt(d.installmentCurrentIdx, 10)
-      if (instCount > 1 && instIdx >= 1) {
-        patch.installmentCount = instCount
-        patch.installmentStartMonth = addMonths(nowMonthKey(), -(instIdx - 1))
-      } else if (d.installmentCount !== undefined || d.installmentCurrentIdx !== undefined) {
-        patch.installmentCount = null
-        patch.installmentStartMonth = null
-      }
-      fixed[f.id] = patch
+      fixed[f.id] = { name: d.name?.trim() || f.name }
     })
     const pay = {}
     payMethods.forEach((p) => {
@@ -362,7 +264,7 @@ export default function SettingsSheet() {
         <h4>고정지출 (매달 반복, 한도 없음)</h4>
         <div>
           {sortedFixed.map((f) => (
-            <FixedRow key={f.id} f={f} draftApi={fixedDraft} onDelete={handleDeleteFixed} onToggleEnd={handleToggleEnd} payMethods={payMethods} />
+            <FixedRow key={f.id} f={f} draftApi={fixedDraft} onDelete={handleDeleteFixed} />
           ))}
         </div>
         <button className="add-row-btn" onClick={addFixedExpense}>

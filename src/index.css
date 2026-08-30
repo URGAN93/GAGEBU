@@ -43,7 +43,7 @@
   #analysisBlurContainer.hidden-state #analysisBlurHint{ display:flex; }
   .app{ width:100%; max-width:480px; padding:env(safe-area-inset-top,0) 18px 0 18px; position:relative; }
 
-  header{ padding:28px 4px 18px 4px; display:flex; align-items:flex-end; justify-content:space-between; }
+  header{ padding:28px 4px 18px 4px; display:flex; align-items:flex-end; gap:10px; }
   .month-label{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:26px; letter-spacing:-0.5px; }
   .month-label small{ display:block; font-family:'Pretendard'; font-weight:500; font-size:12.5px; color:var(--ink-soft); opacity:0.65; letter-spacing:1.5px; margin-bottom:4px; }
   .month-nav{ display:flex; gap:6px; }
@@ -134,15 +134,17 @@
   .pay-pill.active .pp-name{ color:var(--gold-soft); opacity:1; }
   .pay-pill.active .pp-amt{ color:var(--paper); }
 
-  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; min-width:0; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr) minmax(34px,0.75fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; min-width:0; }
   .cal-dow{ text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); opacity:0.5; padding-bottom:4px; }
-  .cal-day{ aspect-ratio:1; border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; gap:2px; background:var(--paper-dim); color:var(--ink-soft); }
+  .cal-day{ aspect-ratio:1; min-width:0; border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; gap:2px; background:var(--paper-dim); color:var(--ink-soft); }
   .cal-day.empty{ background:transparent; cursor:default; }
   .cal-day .d-num{ font-weight:700; font-size:12px; color:var(--ink); }
-  .cal-day .d-amt{ font-family:'IBM Plex Mono', monospace; font-size:8.5px; }
+  .cal-day .d-amt{ font-family:'IBM Plex Mono', monospace; font-size:8.5px; white-space:nowrap; }
   .cal-day.has-spend{ background:#fff; border:1px solid var(--line); }
+  .cal-week-total{ min-width:0; border-radius:9px; display:flex; align-items:center; justify-content:center; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:8.5px; font-weight:700; color:var(--paper); background:var(--ink); white-space:nowrap; overflow:hidden; padding:0 2px; }
   .cal-day.today{ outline:2px solid var(--gold); }
   .cal-day.selected{ outline:2px solid var(--ink); }
+  .cal-tx-list{ margin-top:12px; }
 
   .fab{
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);
@@ -181,8 +183,12 @@
   .sheet-submit:disabled{ opacity:0.4; }
   .sheet-delete{ width:100%; padding:13px; margin-top:10px; border-radius:12px; border:1px solid var(--over); background:transparent; color:var(--over); font-weight:700; font-size:14px; cursor:pointer; }
 
-  .settings-group{ margin-bottom:22px; }
-  .settings-group h4{ font-size:13px; font-weight:700; color:var(--ink-soft); opacity:0.7; letter-spacing:1px; margin:0 0 10px 2px; }
+  .settings-group{ margin-bottom:26px; }
+  .settings-group h4{
+    font-size:14.5px; font-weight:800; color:var(--ink); letter-spacing:0.2px;
+    margin:0 0 12px 2px; padding-bottom:7px; border-bottom:2px solid var(--gold);
+    display:inline-block;
+  }
   .manage-row{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:8px; touch-action:pan-y; }
   .manage-row.dragging{ opacity:0.6; box-shadow:0 6px 16px rgba(19,42,51,0.22); position:relative; z-index:5; }
   .manage-row-top{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
@@ -228,9 +234,13 @@
 
   @media (min-width:760px){
     body{ padding-bottom:80px; }
-    .app{ max-width:640px; padding-top:14px; }
-    .shell{ align-items:flex-start; gap:18px; }
-    .side-rail{ display:flex; flex-direction:column; align-items:center; gap:20px; width:64px; flex-shrink:0; padding-top:36px; position:sticky; top:20px; }
+    .app{ max-width:1100px; padding-top:14px; margin-left:24px; margin-right:auto; }
+    .shell{ display:grid; grid-template-columns:120px 1fr; align-items:start; }
+    .side-rail{ display:flex; flex-direction:column; align-items:center; gap:20px; width:64px; justify-self:center; padding-top:36px; position:sticky; top:20px; }
     .bottom-nav{ display:none; }
     .fab{ bottom:calc(22px + env(safe-area-inset-bottom,0)); }
+    .calendar-wrap{ display:grid; grid-template-columns:1fr 360px; gap:16px; align-items:start; }
+    .cal-tx-list{ margin-top:0; }
+    .cal-grid{ grid-template-columns:repeat(7,1fr) minmax(56px,0.9fr); }
+    .cal-week-total{ font-size:11px; }
   }

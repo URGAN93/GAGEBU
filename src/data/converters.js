@@ -65,12 +65,12 @@ export function irregularToRow(e, idx, household) {
   return row
 }
 
-export function rowToBudget(r) {
-  return { id: r.id, categoryId: r.category_id, yearMonth: r.year_month, amount: r.amount }
+export function rowToBudgetChange(r) {
+  return { id: r.id, categoryId: r.category_id, effectiveMonth: r.effective_month, amount: r.amount }
 }
 
-export function budgetToRow(b, household) {
-  const row = { id: b.id, category_id: b.categoryId, year_month: b.yearMonth, amount: b.amount }
+export function budgetChangeToRow(b, household) {
+  const row = { id: b.id, category_id: b.categoryId, effective_month: b.effectiveMonth, amount: b.amount }
   if (household) row.household_id = household.id
   return row
 }
@@ -162,6 +162,7 @@ export function rowToFixed(r) {
     payMethod: r.pay_method,
     installmentCount: r.installment_count || null,
     installmentStartMonth: r.installment_start_month || null,
+    startMonth: r.start_month || null,
     endMonth: r.end_month || null,
   }
 }
@@ -176,6 +177,7 @@ export function fixedToRow(f, idx, household) {
     sort_order: idx,
     installment_count: f.installmentCount || null,
     installment_start_month: f.installmentStartMonth || null,
+    start_month: f.startMonth || null,
     end_month: f.endMonth || null,
   }
   if (household) row.household_id = household.id

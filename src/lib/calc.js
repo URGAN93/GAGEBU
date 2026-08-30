@@ -18,8 +18,7 @@ export function nowMonthKey() {
 export const fmt = (n) => Math.round(n || 0).toLocaleString('ko-KR')
 
 export function fmtMan(n) {
-  const man = n / 10000
-  return (man < 10 ? man.toFixed(1) : Math.round(man)) + '만'
+  return (n / 10000).toFixed(1) + '만'
 }
 
 export function monthKey(d) {
@@ -78,6 +77,7 @@ export function fixedInstallmentIndex(f, viewKey) {
 
 export function activeFixedExpenses(fixedExpenses, viewKey) {
   return fixedExpenses.filter((f) => {
+    if (f.startMonth && viewKey < f.startMonth) return false
     if (f.endMonth && viewKey >= f.endMonth) return false
     if (!f.installmentCount) return true
     const idx = fixedInstallmentIndex(f, viewKey)
@@ -87,6 +87,7 @@ export function activeFixedExpenses(fixedExpenses, viewKey) {
 
 export function isFixedActiveNow(f) {
   const vKey = nowMonthKey()
+  if (f.startMonth && vKey < f.startMonth) return false
   if (f.endMonth && vKey >= f.endMonth) return false
   if (!f.installmentCount) return true
   const idx = fixedInstallmentIndex(f, vKey)
@@ -119,10 +120,13 @@ export function expandMonthTx(transactions, viewKey) {
   return result
 }
 
-// 생활 카테고리의 월별 예산: 해당 월에 override(monthlyBudgets)가 있으면 그 값, 없으면 카테고리 기본 예산(cat.limit)
-export function getBudgetForCategory(monthlyBudgets, cat, yearMonth) {
-  const override = monthlyBudgets.find((b) => b.categoryId === cat.id && b.yearMonth === yearMonth)
-  return override ? override.amount : cat.limit
+// 생활 카테고리의 특정 달 예산: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 cat.limit(기본값)
+// (누적 카테고리 monthlyAmountForMonth와 완전히 같은 방식 — "이번 달만 예외"가 아니라 "이 달부터 쭉" 변경)
+export function budgetAmountForMonth(livingBudgetChanges, cat, yearMonth) {
+  const applicable = livingBudgetChanges
+    .filter((c) => c.categoryId === cat.id && c.effectiveMonth <= yearMonth)
+    .sort((a, b) => a.effectiveMonth.localeCompare(b.effectiveMonth))
+  return applicable.length ? applicable[applicable.length - 1].amount : cat.limit
 }
 
 // 누적 카테고리의 특정 달 충전액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 env.monthlyAmount(기본값)

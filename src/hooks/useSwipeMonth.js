@@ -23,7 +23,6 @@ export function useSwipeMonth(onSwipe) {
     let activePointerId = null
 
     function onPointerDown(e) {
-      if (window.innerWidth >= 760) return // 태블릿/데스크탑 레이아웃에서는 스와이프 비활성화
       if (activePointerId !== null) return
       if (e.pointerType === 'mouse' && e.button !== 0) return
       activePointerId = e.pointerId

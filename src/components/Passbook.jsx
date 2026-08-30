@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { fmt, monthKey, expandMonthTx, getBudgetForCategory, monthlyAmountForMonth, activeFixedExpenses } from '../lib/calc.js'
+import { fmt, monthKey, expandMonthTx, budgetAmountForMonth, monthlyAmountForMonth, activeFixedExpenses } from '../lib/calc.js'
 
 export default function Passbook() {
   const viewDate = useAppStore((s) => s.viewDate)
   const transactions = useAppStore((s) => s.transactions)
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
-  const monthlyBudgets = useAppStore((s) => s.monthlyBudgets)
+  const livingBudgetChanges = useAppStore((s) => s.livingBudgetChanges)
   const envelopeRateChanges = useAppStore((s) => s.envelopeRateChanges)
   const fixedExpenses = useAppStore((s) => s.fixedExpenses)
 
@@ -18,7 +18,7 @@ export default function Passbook() {
     const livingTx = monthTx.filter((t) => t.type === 'living')
     const irregularTxThisMonth = monthTx.filter((t) => t.type === 'irregular')
     const totalBudget =
-      livingCategories.reduce((s, c) => s + getBudgetForCategory(monthlyBudgets, c, vKey), 0) +
+      livingCategories.reduce((s, c) => s + budgetAmountForMonth(livingBudgetChanges, c, vKey), 0) +
       irregularEnvelopes.reduce((s, e) => s + monthlyAmountForMonth(envelopeRateChanges, e, vKey), 0)
     const totalSettled = monthTx.filter((t) => t.type === 'settlement').reduce((s, t) => s + t.amount, 0)
     const rawSpent = livingTx.reduce((s, t) => s + t.amount, 0) + irregularTxThisMonth.reduce((s, t) => s + t.amount, 0)
@@ -26,7 +26,7 @@ export default function Passbook() {
     const totalPct = totalBudget ? Math.min(100, (totalSpent / totalBudget) * 100) : 0
     const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((s, f) => s + f.amount, 0)
     return { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct }
-  }, [transactions, livingCategories, irregularEnvelopes, monthlyBudgets, envelopeRateChanges, fixedExpenses, vKey])
+  }, [transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, vKey])
 
   const remain = totalBudget - totalSpent
 

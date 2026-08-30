@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { sb, PALETTE } from '../data/supabaseClient.js'
 import { resolveHousehold, loadState, migratePersonalAllowance, SupabaseUnreachableError } from '../data/loadState.js'
 import {
-  budgetToRow,
+  budgetChangeToRow,
   rateChangeToRow,
   txToRow,
   bonusCreditToRow,
@@ -32,7 +32,7 @@ const initialData = {
   transactions: [],
   fixedExpenses: [],
   payMethods: [],
-  monthlyBudgets: [],
+  livingBudgetChanges: [],
   envelopeRateChanges: [],
   envelopeBonusCredits: [],
   incomeCategories: [],
@@ -157,21 +157,21 @@ export const useAppStore = create((set, get) => ({
     return findCatPool(catId, { livingCategories: s.livingCategories, irregularEnvelopes: s.irregularEnvelopes })
   },
 
-  async upsertMonthlyBudget(categoryId, yearMonth, amount) {
-    const existing = get().monthlyBudgets.find((b) => b.categoryId === categoryId && b.yearMonth === yearMonth)
-    const row = { id: existing ? existing.id : `mb_${categoryId}_${yearMonth}`, categoryId, yearMonth, amount }
-    const { error } = await sb.from('monthly_budgets').upsert(budgetToRow(row, get().household))
+  async upsertLivingBudgetRate(categoryId, effectiveMonth, amount) {
+    const existing = get().livingBudgetChanges.find((b) => b.categoryId === categoryId && b.effectiveMonth === effectiveMonth)
+    const row = { id: existing ? existing.id : `lbc_${categoryId}_${effectiveMonth}`, categoryId, effectiveMonth, amount }
+    const { error } = await sb.from('living_budget_changes').upsert(budgetChangeToRow(row, get().household))
     if (error) {
       get().showToast('예산 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)')
       console.error(error)
       return
     }
     set((s) => ({
-      monthlyBudgets: existing
-        ? s.monthlyBudgets.map((b) => (b === existing ? row : b))
-        : [...s.monthlyBudgets, row],
+      livingBudgetChanges: existing
+        ? s.livingBudgetChanges.map((b) => (b === existing ? row : b))
+        : [...s.livingBudgetChanges, row],
     }))
-    get().showToast(`${yearMonth} 예산을 수정했어요`)
+    get().showToast(`${effectiveMonth}부터 적용되는 예산을 수정했어요`)
   },
 
   async upsertEnvelopeRate(envelopeId, effectiveMonth, amount) {
@@ -219,7 +219,11 @@ export const useAppStore = create((set, get) => ({
     }))
   },
   addFixedExpense() {
-    set((s) => ({ fixedExpenses: [...s.fixedExpenses, { id: 'fixed_' + Date.now().toString(36), name: '새 항목', amount: 0 }] }))
+    // startMonth를 지금 보고 있는 달로 고정해서, 새로 추가한 고정지출이 과거 달에까지 소급 적용되지 않게 한다
+    // (기존 행은 startMonth가 없어서 하위호환으로 계속 처음부터 적용된 것으로 취급됨).
+    set((s) => ({
+      fixedExpenses: [...s.fixedExpenses, { id: 'fixed_' + Date.now().toString(36), name: '새 항목', amount: 0, startMonth: monthKey(s.viewDate) }],
+    }))
   },
   addPayMethod() {
     set((s) => ({ payMethods: [...s.payMethods, { id: 'pay_' + Date.now().toString(36), name: '새 결제수단' }] }))
@@ -269,6 +273,21 @@ export const useAppStore = create((set, get) => ({
     }
     set((s) => ({ payMethods: s.payMethods.filter((p) => p.id !== id) }))
     return { ok: true }
+  },
+
+  // 고정지출의 금액/결제수단/할부 정보를 그 자리에서 바로 수정 (저장하기 버튼 안 기다림 — 예산 탭 카드 전용).
+  async updateFixedExpense(id, patch) {
+    const idx = get().fixedExpenses.findIndex((f) => f.id === id)
+    if (idx === -1) return
+    const updated = { ...get().fixedExpenses[idx], ...patch }
+    const { error } = await sb.from('fixed_expenses').upsert(fixedToRow(updated, idx, get().household))
+    if (error) {
+      get().showToast('고정지출 수정 실패')
+      console.error(error)
+      return
+    }
+    set((s) => ({ fixedExpenses: s.fixedExpenses.map((f) => (f.id === id ? updated : f)) }))
+    get().showToast('고정지출을 수정했어요')
   },
 
   async toggleFixedEnd(id) {

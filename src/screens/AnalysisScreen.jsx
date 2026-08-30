@@ -6,7 +6,7 @@ import {
   fmt,
   activeFixedExpenses,
   sortTx,
-  getBudgetForCategory,
+  budgetAmountForMonth,
   settlementsForCategory,
   settlementsForCategoryRange,
   creditedForEnvelope,
@@ -35,7 +35,7 @@ export default function AnalysisScreen() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
-  const monthlyBudgets = useAppStore((s) => s.monthlyBudgets)
+  const livingBudgetChanges = useAppStore((s) => s.livingBudgetChanges)
   const envelopeRateChanges = useAppStore((s) => s.envelopeRateChanges)
   const envelopeBonusCredits = useAppStore((s) => s.envelopeBonusCredits)
   const openTxSheet = useAppStore((s) => s.openTxSheet)
@@ -121,7 +121,7 @@ export default function AnalysisScreen() {
     const catSpent = monthTx.filter((t) => t.type === 'living' && t.categoryId === filterCat.id).reduce((s, t) => s + t.amount, 0)
     const catSettled = settlementsForCategory(transactions, filterCat.id, vKey)
     const effectiveSpent = catSpent - catSettled
-    const budget = getBudgetForCategory(monthlyBudgets, filterCat, vKey)
+    const budget = budgetAmountForMonth(livingBudgetChanges, filterCat, vKey)
     const pct = budget ? (effectiveSpent / budget) * 100 : 0
     const remain = budget - effectiveSpent
     catSummary = { effectiveSpent, budget, pct, remain }

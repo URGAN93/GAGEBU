@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { Fragment, useCallback, useEffect, useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { expandMonthTx, fmtMan, monthKey, todayKST } from '../lib/calc.js'
 import { useSwipeMonth } from '../hooks/useSwipeMonth.js'
@@ -52,39 +52,59 @@ export default function CalendarScreen() {
   for (let i = 0; i < firstDow; i++) days.push(null)
   for (let day = 1; day <= daysInMonth; day++) days.push(day)
 
+  const weeks = []
+  for (let i = 0; i < days.length; i += 7) {
+    const week = days.slice(i, i + 7)
+    while (week.length < 7) week.push(null)
+    weeks.push(week)
+  }
+
   const dayTx = useMemo(() => (selectedCalDate ? monthTx.filter((t) => t.date === selectedCalDate) : []), [monthTx, selectedCalDate])
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
 
   return (
-    <div className="col-calendar" id="colCalendar" ref={areaRef}>
+    <div className="col-calendar" id="colCalendar">
       <div className="calendar-wrap">
+        <div ref={areaRef}>
         <div className="cal-grid" ref={dragRef}>
           {DOW.map((d) => (
             <div className="cal-dow" key={d}>
               {d}
             </div>
           ))}
-          {days.map((day, i) => {
-            if (day === null) return <div className="cal-day empty" key={`empty-${i}`} />
-            const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            const amt = dayTotals[dateStr]
-            const isToday = dateStr === todayStr
-            const isSelected = !isToday && dateStr === selectedCalDate
+          <div className="cal-dow cal-week-dow">주간</div>
+          {weeks.map((week, wi) => {
+            let weekTotal = 0
+            const cells = week.map((day, i) => {
+              if (day === null) return <div className="cal-day empty" key={`empty-${wi}-${i}`} />
+              const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              const amt = dayTotals[dateStr]
+              if (amt) weekTotal += amt
+              const isToday = dateStr === todayStr
+              const isSelected = !isToday && dateStr === selectedCalDate
+              return (
+                <div
+                  key={dateStr}
+                  className={`cal-day ${amt ? 'has-spend' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
+                  onClick={() => setSelectedCalDate(dateStr)}
+                >
+                  <span className="d-num">{day}</span>
+                  {amt ? <span className="d-amt">{fmtMan(amt)}</span> : null}
+                </div>
+              )
+            })
             return (
-              <div
-                key={dateStr}
-                className={`cal-day ${amt ? 'has-spend' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
-                onClick={() => setSelectedCalDate(dateStr)}
-              >
-                <span className="d-num">{day}</span>
-                {amt ? <span className="d-amt">{fmtMan(amt)}</span> : null}
-              </div>
+              <Fragment key={`wk-${wi}`}>
+                {cells}
+                <div className="cal-week-total">{weekTotal ? fmtMan(weekTotal) : ''}</div>
+              </Fragment>
             )
           })}
         </div>
+        </div>
         {selectedCalDate && (
-          <div className="tx-list" style={{ marginTop: 12 }}>
+          <div className="tx-list cal-tx-list">
             {dayTx.length === 0 ? (
               <div className="tx-empty">{selectedCalDate.slice(5).replace('-', '.')}에는 지출이 없어요.</div>
             ) : (

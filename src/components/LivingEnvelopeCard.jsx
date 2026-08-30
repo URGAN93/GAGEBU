@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { fmt, getBudgetForCategory } from '../lib/calc.js'
+import { fmt, budgetAmountForMonth } from '../lib/calc.js'
 import { statusColor } from '../lib/theme.js'
 import { settlementsForCategory } from '../lib/calc.js'
 
 export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
-  const monthlyBudgets = useAppStore((s) => s.monthlyBudgets)
+  const livingBudgetChanges = useAppStore((s) => s.livingBudgetChanges)
   const transactions = useAppStore((s) => s.transactions)
-  const upsertMonthlyBudget = useAppStore((s) => s.upsertMonthlyBudget)
+  const upsertLivingBudgetRate = useAppStore((s) => s.upsertLivingBudgetRate)
   const [expanded, setExpanded] = useState(false)
 
   const spent = catTx.reduce((s, t) => s + t.amount, 0)
   // 정산: 원거래 금액(spent)은 절대 안 바꾸고, "실질 지출 = 실사용 - 정산액"만 예산 계산에 반영한다
   const settled = settlementsForCategory(transactions, cat.id, vKey)
   const effectiveSpent = spent - settled
-  const budget = getBudgetForCategory(monthlyBudgets, cat, vKey)
+  const budget = budgetAmountForMonth(livingBudgetChanges, cat, vKey)
   const isOverride = budget !== cat.limit
   const pct = budget ? (effectiveSpent / budget) * 100 : 0
   const barPct = Math.min(100, Math.max(0, pct))
@@ -30,10 +30,10 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
 
   async function handleEditBudget(e) {
     e.stopPropagation()
-    const input = prompt(`${vKey} ${cat.name} 예산 (기본 ${fmt(cat.limit)}원)`, budget)
+    const input = prompt(`${vKey}부터 적용할 ${cat.name} 예산 (기본 ${fmt(cat.limit)}원)`, budget)
     if (input === null) return
     const amount = Math.max(0, parseInt(input, 10) || 0)
-    await upsertMonthlyBudget(cat.id, vKey, amount)
+    await upsertLivingBudgetRate(cat.id, vKey, amount)
   }
 
   return (
@@ -54,7 +54,7 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
           / {fmt(budget)}원{isOverride ? <small style={{ opacity: 0.6 }}> (기본 {fmt(cat.limit)})</small> : null}{' '}
           <button
             className="mr-budget-edit"
-            title="이번 달 예산 수정"
+            title="이번 달부터 예산 수정"
             style={{ border: 'none', background: 'none', cursor: 'pointer', opacity: 0.55, fontSize: 12 }}
             onClick={handleEditBudget}
           >

@@ -6,7 +6,7 @@ import {
   expandMonthTx,
   activeFixedExpenses,
   fixedInstallmentIndex,
-  getBudgetForCategory,
+  budgetAmountForMonth,
   monthlyAmountForMonth,
   irregularContributions,
 } from './calc.js'
@@ -100,6 +100,17 @@ describe('activeFixedExpenses / fixedInstallmentIndex', () => {
     expect(activeFixedExpenses([f], '2026-12')).toHaveLength(0)
   })
 
+  it('excludes a fixed expense from months before its startMonth', () => {
+    const f = { id: 'f3', name: '통신비', amount: 89990, startMonth: '2026-09' }
+    expect(activeFixedExpenses([f], '2026-08')).toHaveLength(0)
+    expect(activeFixedExpenses([f], '2026-09')).toHaveLength(1)
+  })
+
+  it('has no startMonth restriction for legacy rows (backward compatible)', () => {
+    const f = { id: 'f4', name: '구독', amount: 10000 }
+    expect(activeFixedExpenses([f], '2020-01')).toHaveLength(1)
+  })
+
   it('respects installment boundaries the same way expandMonthTx does', () => {
     const f = { id: 'f2', name: '가전 할부', amount: 20000, installmentCount: 6, installmentStartMonth: '2026-06' }
     expect(fixedInstallmentIndex(f, '2026-06')).toBe(1)
@@ -109,15 +120,20 @@ describe('activeFixedExpenses / fixedInstallmentIndex', () => {
   })
 })
 
-describe('getBudgetForCategory', () => {
+describe('budgetAmountForMonth', () => {
   const cat = { id: 'food', limit: 600000 }
-  it('falls back to the category default when there is no override', () => {
-    expect(getBudgetForCategory([], cat, '2026-08')).toBe(600000)
+  it('uses the base amount before any effective-month change', () => {
+    expect(budgetAmountForMonth([], cat, '2026-08')).toBe(600000)
   })
-  it('uses the month-specific override when present', () => {
-    const budgets = [{ categoryId: 'food', yearMonth: '2026-08', amount: 700000 }]
-    expect(getBudgetForCategory(budgets, cat, '2026-08')).toBe(700000)
-    expect(getBudgetForCategory(budgets, cat, '2026-09')).toBe(600000)
+  it('applies the latest change effective at or before the target month, and does not affect earlier months', () => {
+    const changes = [
+      { categoryId: 'food', effectiveMonth: '2026-09', amount: 700000 },
+      { categoryId: 'food', effectiveMonth: '2026-11', amount: 650000 },
+    ]
+    expect(budgetAmountForMonth(changes, cat, '2026-08')).toBe(600000)
+    expect(budgetAmountForMonth(changes, cat, '2026-09')).toBe(700000)
+    expect(budgetAmountForMonth(changes, cat, '2026-10')).toBe(700000)
+    expect(budgetAmountForMonth(changes, cat, '2026-11')).toBe(650000)
   })
 })
 
