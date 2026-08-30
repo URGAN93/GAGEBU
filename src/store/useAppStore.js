@@ -11,9 +11,12 @@ import {
   fixedToRow,
   payToRow,
   incomeCatToRow,
+  notifSettingsToRow,
 } from '../data/converters.js'
 import { todayKST, monthKey } from '../lib/calc.js'
 import { findCatPool } from '../lib/selectors.js'
+import { VAPID_PUBLIC_KEY } from '../data/supabaseClient.js'
+import { urlBase64ToUint8Array, registerServiceWorker } from '../lib/push.js'
 
 // viewDate(지금 보고 있는 달)는 캘린더/예산/분석 탭이 전부 공유하는 값이라 스토어에 둔다.
 // (오늘 이 화면 저 화면 다니면서 같은 달 데이터를 봐야 하므로, 화면별 로컬 state로 두면 안 맞물린다.)
@@ -39,6 +42,8 @@ const initialData = {
   household: null,
   myUserId: null,
   householdMembers: [],
+  notificationSettings: { dailyReminderEnabled: true, dailyReminderHour: 21 },
+  pushSubscribed: false,
 }
 
 export const useAppStore = create((set, get) => ({
@@ -339,6 +344,76 @@ export const useAppStore = create((set, get) => ({
     set({ livingCategories, irregularEnvelopes, fixedExpenses, payMethods, incomeCategories, settingsSheetOpen: false })
     get().showToast('카테고리 설정을 저장했어요')
     return { ok: true }
+  },
+
+  async subscribeToPush() {
+    if (Notification.permission === 'denied') {
+      get().showToast('브라우저 알림 권한이 차단되어 있어요. 브라우저 설정에서 허용해주세요.')
+      return
+    }
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') {
+      get().showToast('알림 권한을 허용해야 알림을 받을 수 있어요')
+      return
+    }
+
+    const reg = await registerServiceWorker()
+    if (!reg) {
+      get().showToast('알림 등록에 실패했어요')
+      return
+    }
+
+    let sub
+    try {
+      sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }))
+    } catch (err) {
+      console.error('push subscribe 실패', err)
+      get().showToast('알림 구독에 실패했어요')
+      return
+    }
+
+    const json = sub.toJSON()
+    const row = { id: `push_${Date.now().toString(36)}`, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth_key: json.keys.auth }
+    const { error } = await sb.from('push_subscriptions').upsert(row, { onConflict: 'user_id,endpoint' })
+    if (error) {
+      get().showToast('알림 구독 저장 실패 (SQL 마이그레이션이 필요할 수 있어요)')
+      console.error(error)
+      return
+    }
+    // notification_settings 기본값도 같이 저장해서 이후 Edge Function이 바로 참조할 수 있게 한다
+    await sb.from('notification_settings').upsert(notifSettingsToRow(get().notificationSettings, get().myUserId), { onConflict: 'user_id' })
+    set({ pushSubscribed: true })
+    get().showToast('알림을 켰어요')
+  },
+
+  async unsubscribeFromPush() {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration('./sw.js')
+      const sub = reg && (await reg.pushManager.getSubscription())
+      if (sub) {
+        await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        await sub.unsubscribe()
+      } else {
+        // 로컬 구독 정보가 없어도(다른 기기 등) 내 계정에 저장된 구독은 정리한다
+        await sb.from('push_subscriptions').delete().eq('user_id', get().myUserId)
+      }
+    } catch (err) {
+      console.error('unsubscribe 실패', err)
+    }
+    set({ pushSubscribed: false })
+    get().showToast('알림을 껐어요')
+  },
+
+  async saveNotificationSettings(hour) {
+    const notificationSettings = { ...get().notificationSettings, dailyReminderHour: hour }
+    set({ notificationSettings })
+    const { error } = await sb.from('notification_settings').upsert(notifSettingsToRow(notificationSettings, get().myUserId), { onConflict: 'user_id' })
+    if (error) {
+      get().showToast('알림 설정 저장 실패')
+      console.error(error)
+      return
+    }
+    get().showToast('알림 설정을 저장했어요')
   },
 
   showToast(message) {

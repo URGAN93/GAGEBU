@@ -49,4 +49,5 @@ export const DEFAULT_STATE = {
   livingBudgetChanges: [],
   envelopeRateChanges: [],
   envelopeBonusCredits: [],
+  notificationSettings: { dailyReminderEnabled: true, dailyReminderHour: 21 },
 }

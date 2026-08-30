@@ -17,6 +17,8 @@ describe('converters module — import smoke test', () => {
       'incomeCatToRow',
       'rowToBonusCredit',
       'bonusCreditToRow',
+      'rowToNotifSettings',
+      'notifSettingsToRow',
       'categoryHouseholdId',
       'rowToTx',
       'txToRow',
