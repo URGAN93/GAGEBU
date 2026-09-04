@@ -2,12 +2,26 @@ import { useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { fmt, monthKey, addMonths } from '../lib/calc.js'
 
+const ASSET_PIN = '0618'
+
 export default function AssetScreen() {
   const assetCategories = useAppStore((s) => s.assetCategories)
   const assetEntries = useAppStore((s) => s.assetEntries)
   const addAssetEntry = useAppStore((s) => s.addAssetEntry)
   const deleteAssetEntry = useAppStore((s) => s.deleteAssetEntry)
+  const showToast = useAppStore((s) => s.showToast)
   const [expandedId, setExpandedId] = useState(null)
+  const [unlocked, setUnlocked] = useState(false)
+
+  const handleUnlock = () => {
+    const input = prompt('PIN 번호를 입력해주세요')
+    if (input === null) return
+    if (input === ASSET_PIN) {
+      setUnlocked(true)
+    } else {
+      showToast('PIN 번호가 틀렸어요')
+    }
+  }
 
   const totalsByCategory = useMemo(() => {
     const map = {}
@@ -47,7 +61,8 @@ export default function AssetScreen() {
 
   return (
     <div className="col-asset">
-      <div className="asset-overview">
+      <div id="assetBlurContainer" className={!unlocked ? 'hidden-state' : ''} style={{ position: 'relative' }} onClick={!unlocked ? handleUnlock : undefined}>
+      <div id="assetBlurWrap" className={`asset-overview${!unlocked ? ' blur-hidden' : ''}`}>
         <div className="asset-total-eyebrow">총 자산</div>
         <div className="asset-total-amt">{fmt(totalAssets)}원</div>
 
@@ -148,6 +163,12 @@ export default function AssetScreen() {
             })}
           </div>
         </div>
+      </div>
+      {!unlocked && (
+        <div id="assetBlurHint" onClick={handleUnlock}>
+          탭하면 PIN 입력
+        </div>
+      )}
       </div>
     </div>
   )
