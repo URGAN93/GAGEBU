@@ -22,7 +22,7 @@
       radial-gradient(1200px 600px at 50% -10%, #FBF8EF 0%, var(--paper) 55%),
       var(--paper);
     color:var(--ink);
-    min-height:100vh;
+    min-height:100dvh;
     display:flex;
     justify-content:center;
     padding-bottom:150px;
