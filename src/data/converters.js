@@ -101,6 +101,26 @@ export function bonusCreditToRow(b) {
   return { id: b.id, envelope_id: b.envelopeId, month: b.month, amount: b.amount, note: b.note || null }
 }
 
+export function rowToAssetCategory(r) {
+  return { id: r.id, name: r.name, color: r.color, sortOrder: r.sort_order }
+}
+
+export function assetCategoryToRow(c, idx, household) {
+  const row = { id: c.id, name: c.name, color: c.color, sort_order: idx }
+  if (household) row.household_id = household.id
+  return row
+}
+
+export function rowToAssetEntry(r) {
+  return { id: r.id, categoryId: r.category_id, amount: r.amount, month: r.month, note: r.note || '', createdAt: r.created_at, userId: r.user_id || null }
+}
+
+export function assetEntryToRow(e, household) {
+  const row = { id: e.id, category_id: e.categoryId, amount: e.amount, month: e.month, note: e.note || null }
+  if (household) row.household_id = household.id
+  return row
+}
+
 export function rowToNotifSettings(r) {
   return { dailyReminderEnabled: r.daily_reminder_enabled, dailyReminderHour: r.daily_reminder_hour }
 }

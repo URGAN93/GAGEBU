@@ -49,5 +49,11 @@ export const DEFAULT_STATE = {
   livingBudgetChanges: [],
   envelopeRateChanges: [],
   envelopeBonusCredits: [],
+  assetCategories: [
+    { id: 'asset_savings', name: '예적금', color: PALETTE[0] },
+    { id: 'asset_cma', name: 'CMA', color: PALETTE[4] },
+    { id: 'asset_etc', name: '기타', color: PALETTE[5] },
+  ],
+  assetEntries: [],
   notificationSettings: { dailyReminderEnabled: true, dailyReminderHour: 21 },
 }

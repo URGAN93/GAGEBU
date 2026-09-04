@@ -67,6 +67,43 @@
   .passbook .total-bar-fill{ height:100%; background:linear-gradient(90deg, var(--gold-soft), var(--gold)); border-radius:4px; transition:width .5s ease; }
   .passbook .total-foot{ display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:rgba(243,239,228,0.55); }
   .passbook .total-combined{ font-size:10.5px; color:rgba(243,239,228,0.4); }
+  .asset-overview{
+    background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px;
+    box-shadow:var(--shadow);
+  }
+  .asset-total-eyebrow{ font-size:11px; letter-spacing:3px; color:var(--ink-soft); opacity:0.55; font-weight:600; text-transform:uppercase; }
+  .asset-total-amt{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:30px; letter-spacing:-0.5px; margin-top:6px; color:var(--ink); }
+  .asset-cat-list{ margin-top:18px; display:flex; flex-direction:column; gap:10px; }
+  .asset-cat-row{ border:1px solid var(--line); border-radius:12px; padding:12px 14px; cursor:pointer; }
+  .asset-cat-top{ display:flex; justify-content:space-between; align-items:center; }
+  .asset-cat-name{ font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:8px; }
+  .asset-cat-pct{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; font-weight:600; color:var(--ink-soft); }
+  .asset-cat-amt{ margin-top:6px; font-family:'IBM Plex Mono', monospace; font-size:16.5px; font-weight:600; }
+  .asset-cat-bar{ margin-top:8px; height:6px; border-radius:4px; background:var(--paper-dim); overflow:hidden; }
+  .asset-cat-bar-fill{ height:100%; border-radius:4px; transition:width .5s ease; }
+  .asset-cat-body{ max-height:0; overflow:hidden; transition:max-height .3s ease; }
+  .asset-cat-row.expanded .asset-cat-body{ max-height:400px; margin-top:10px; }
+  .asset-entry-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--ink-soft); padding:6px 0; border-top:1px dashed var(--line); }
+  .asset-entry-row span:first-child{ flex-shrink:0; opacity:0.6; }
+  .asset-entry-row span:nth-child(2){ flex:1; text-align:right; }
+  .asset-entry-del{ border:none; background:transparent; color:var(--over); opacity:0.6; cursor:pointer; font-size:11px; padding:0 2px; }
+  .asset-entry-empty{ font-size:12px; color:var(--ink-soft); opacity:0.6; padding:6px 0; }
+  .asset-add-btn{
+    margin-top:10px; border:1px solid var(--line); background:var(--paper-dim); color:var(--ink);
+    border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .asset-trend{ margin-top:22px; padding-top:18px; border-top:1px solid var(--line); }
+  .asset-trend-title{ font-size:12.5px; font-weight:600; color:var(--ink-soft); opacity:0.75; letter-spacing:1px; margin-bottom:12px; }
+  .asset-trend-stats{ display:flex; gap:18px; margin-bottom:14px; flex-wrap:wrap; }
+  .asset-trend-stat b{ display:block; font-family:'IBM Plex Mono', monospace; font-size:16px; margin-top:2px; }
+  .asset-trend-stat{ font-size:11.5px; color:var(--ink-soft); opacity:0.7; }
+  .asset-chart{ display:flex; justify-content:space-between; gap:6px; }
+  .asset-chart-col{ flex:1; display:flex; flex-direction:column; align-items:center; }
+  .asset-chart-half{ width:55%; display:flex; }
+  .asset-chart-half-top{ height:48px; align-items:flex-end; border-bottom:1px solid var(--line); }
+  .asset-chart-half-bottom{ height:48px; align-items:flex-start; }
+  .asset-chart-bar{ width:100%; border-radius:3px; min-height:2px; }
+  .asset-chart-label{ font-size:10px; margin-top:5px; color:var(--ink-soft); opacity:0.6; }
 
   .section-label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); opacity:0.7; letter-spacing:1px; margin:22px 2px 8px 2px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; }
   .section-label .chevron{ font-size:11px; opacity:0.6; transition:transform .2s ease; }
@@ -208,11 +245,12 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
   .side-rail{ display:none; }
-  .col-calendar, .col-analysis, .col-budget{ display:none; }
+  .col-calendar, .col-analysis, .col-budget, .col-asset{ display:none; }
   .col-calendar{ touch-action:pan-y; }
   .app-cols[data-active="calendar"] .col-calendar{ display:block; }
   .app-cols[data-active="analysis"] .col-analysis{ display:block; }
   .app-cols[data-active="budget"] .col-budget{ display:block; }
+  .app-cols[data-active="asset"] .col-asset{ display:block; }
 
   .bottom-nav{
     position:fixed; left:0; right:0; bottom:0; z-index:25;

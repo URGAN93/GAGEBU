@@ -12,6 +12,7 @@ import {
   payToRow,
   incomeCatToRow,
   notifSettingsToRow,
+  assetEntryToRow,
 } from '../data/converters.js'
 import { todayKST, monthKey } from '../lib/calc.js'
 import { findCatPool } from '../lib/selectors.js'
@@ -54,6 +55,8 @@ const initialData = {
   livingBudgetChanges: [],
   envelopeRateChanges: [],
   envelopeBonusCredits: [],
+  assetCategories: [],
+  assetEntries: [],
   incomeCategories: [],
   household: null,
   myUserId: null,
@@ -281,6 +284,29 @@ export const useAppStore = create((set, get) => ({
       return { ok: false }
     }
     set((s) => ({ fixedExpenses: s.fixedExpenses.filter((f) => f.id !== id) }))
+    return { ok: true }
+  },
+  // 자산 카테고리(예적금/CMA/기타)에 입금 기록 추가 — household 공유, 카테고리별 잔액 = entries 합계.
+  async addAssetEntry(categoryId, amount, month, note) {
+    const row = { id: 'asset_entry_' + Date.now().toString(36), categoryId, amount, month, note: note || '' }
+    const { error } = await sb.from('asset_entries').insert(assetEntryToRow(row, get().household))
+    if (error) {
+      get().showToast('자산 기록 실패 (SQL 마이그레이션이 필요할 수 있어요)')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ assetEntries: [{ ...row, createdAt: new Date().toISOString() }, ...s.assetEntries] }))
+    get().showToast('자산 기록을 추가했어요')
+    return { ok: true }
+  },
+  async deleteAssetEntry(id) {
+    const { error } = await sb.from('asset_entries').delete().eq('id', id)
+    if (error) {
+      get().showToast('삭제 실패')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ assetEntries: s.assetEntries.filter((a) => a.id !== id) }))
     return { ok: true }
   },
   async deletePayMethod(id) {

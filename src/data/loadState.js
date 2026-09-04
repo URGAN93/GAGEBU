@@ -15,6 +15,9 @@ import {
   rowToFixed,
   rowToPay,
   payToRow,
+  rowToAssetCategory,
+  assetCategoryToRow,
+  rowToAssetEntry,
 } from './converters.js'
 
 function sleep(ms) {
@@ -182,6 +185,28 @@ export async function loadState(household, myUserId, members) {
     console.warn('income_categories 테이블을 아직 사용할 수 없어요 (SQL v3 마이그레이션 필요할 수 있음):', err)
   }
 
+  // asset_categories + asset_entries (SQL v6). household가 있는데 비어있으면 기본값(예적금/CMA/기타) 씨딩
+  let assetCategories = []
+  let assetEntries = []
+  try {
+    const { data: catRows, error: eCat } = await sb.from('asset_categories').select('*').order('sort_order')
+    if (eCat) throw eCat
+    if ((!catRows || !catRows.length) && household) {
+      await sb
+        .from('asset_categories')
+        .insert(DEFAULT_STATE.assetCategories.map((c, i) => assetCategoryToRow({ ...c, id: c.id + idSuffix(household.id) }, i, household)))
+      const { data: seeded } = await sb.from('asset_categories').select('*').order('sort_order')
+      assetCategories = (seeded || []).map(rowToAssetCategory)
+    } else {
+      assetCategories = (catRows || []).map(rowToAssetCategory)
+    }
+    const { data: entryRows, error: eEntry } = await sb.from('asset_entries').select('*').order('created_at', { ascending: false })
+    if (eEntry) throw eEntry
+    assetEntries = (entryRows || []).map(rowToAssetEntry)
+  } catch (err) {
+    console.warn('asset_categories/asset_entries 테이블을 아직 사용할 수 없어요 (SQL v6 마이그레이션 필요할 수 있음):', err)
+  }
+
   // notification_settings + push_subscriptions (SQL v4)
   let notificationSettings = structuredClone(DEFAULT_STATE.notificationSettings)
   let pushSubscribed = false
@@ -206,6 +231,8 @@ export async function loadState(household, myUserId, members) {
     livingBudgetChanges,
     envelopeRateChanges,
     envelopeBonusCredits,
+    assetCategories: assetCategories.length ? assetCategories : household ? [] : structuredClone(DEFAULT_STATE.assetCategories),
+    assetEntries,
     incomeCategories: incomeCategories.length ? incomeCategories : household ? [] : structuredClone(DEFAULT_STATE.incomeCategories),
     household: household || null,
     myUserId: myUserId || null,
