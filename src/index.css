@@ -227,6 +227,34 @@
 
   .sheet-submit{ width:100%; padding:15px; border:none; border-radius:12px; background:var(--ink); color:var(--paper); font-weight:700; font-size:15px; margin-top:6px; cursor:pointer; }
   .sheet-submit:disabled{ opacity:0.4; }
+
+  .pin-sheet{
+    width:min(90vw, 460px); max-width:none; text-align:center; border-radius:26px; padding:32px 28px calc(32px + env(safe-area-inset-bottom,0)) 28px;
+    left:50%; right:auto; bottom:auto; top:50%;
+    transform:translate(-50%, -45%); opacity:0;
+    transition:transform .25s cubic-bezier(.32,.72,0,1), opacity .25s ease;
+  }
+  .pin-sheet.show{ transform:translate(-50%, -50%); opacity:1; }
+  .pin-sheet h3{ text-align:center; font-size:21px; }
+  .pin-dots{ display:flex; justify-content:center; gap:22px; margin:10px 0 32px 0; }
+  .pin-dot{ width:18px; height:18px; border-radius:50%; border:1.5px solid var(--ink-soft); opacity:0.35; display:inline-block; transition:all .15s ease; }
+  .pin-dot.filled{ background:var(--ink); border-color:var(--ink); opacity:1; }
+  @keyframes pin-shake{
+    0%, 100%{ transform:translateX(0); }
+    20%{ transform:translateX(-8px); }
+    40%{ transform:translateX(8px); }
+    60%{ transform:translateX(-6px); }
+    80%{ transform:translateX(6px); }
+  }
+  .pin-dots-shake{ animation:pin-shake .35s ease; }
+  .pin-keypad{ display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; }
+  .pin-key{
+    aspect-ratio:1; border-radius:50%; border:1px solid var(--line); background:#fff;
+    font-family:'IBM Plex Mono', monospace; font-size:28px; font-weight:600; color:var(--ink);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .pin-key:active{ background:var(--paper-dim); }
+  .pin-key-empty{ pointer-events:none; }
   .sheet-delete{ width:100%; padding:13px; margin-top:10px; border-radius:12px; border:1px solid var(--over); background:transparent; color:var(--over); font-weight:700; font-size:14px; cursor:pointer; }
 
   .settings-group{ margin-bottom:26px; }

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { fmt, monthKey, addMonths } from '../lib/calc.js'
+import PinPad from '../components/PinPad.jsx'
 
 const ASSET_PIN = '0618'
 
@@ -10,18 +11,19 @@ export default function AssetScreen() {
   const addAssetEntry = useAppStore((s) => s.addAssetEntry)
   const deleteAssetEntry = useAppStore((s) => s.deleteAssetEntry)
   const showToast = useAppStore((s) => s.showToast)
+  const activeCol = useAppStore((s) => s.activeCol)
   const [expandedId, setExpandedId] = useState(null)
   const [unlocked, setUnlocked] = useState(false)
+  const [pinOpen, setPinOpen] = useState(false)
 
-  const handleUnlock = () => {
-    const input = prompt('PIN 번호를 입력해주세요')
-    if (input === null) return
-    if (input === ASSET_PIN) {
-      setUnlocked(true)
-    } else {
-      showToast('PIN 번호가 틀렸어요')
+  // 이 탭은 항상 마운트된 채로 CSS로만 숨겨지므로, 다른 탭으로 나가는 순간 다시 잠가서
+  // 다음에 자산 탭에 돌아왔을 때 매번 PIN을 다시 물어보게 한다.
+  useEffect(() => {
+    if (activeCol !== 'asset') {
+      setUnlocked(false)
+      setPinOpen(false)
     }
-  }
+  }, [activeCol])
 
   const totalsByCategory = useMemo(() => {
     const map = {}
@@ -61,7 +63,7 @@ export default function AssetScreen() {
 
   return (
     <div className="col-asset">
-      <div id="assetBlurContainer" className={!unlocked ? 'hidden-state' : ''} style={{ position: 'relative' }} onClick={!unlocked ? handleUnlock : undefined}>
+      <div id="assetBlurContainer" className={!unlocked ? 'hidden-state' : ''} style={{ position: 'relative' }} onClick={!unlocked ? () => setPinOpen(true) : undefined}>
       <div id="assetBlurWrap" className={`asset-overview${!unlocked ? ' blur-hidden' : ''}`}>
         <div className="asset-total-eyebrow">총 자산</div>
         <div className="asset-total-amt">{fmt(totalAssets)}원</div>
@@ -165,11 +167,22 @@ export default function AssetScreen() {
         </div>
       </div>
       {!unlocked && (
-        <div id="assetBlurHint" onClick={handleUnlock}>
+        <div id="assetBlurHint" onClick={() => setPinOpen(true)}>
           탭하면 PIN 입력
         </div>
       )}
       </div>
+      {pinOpen && (
+        <PinPad
+          pin={ASSET_PIN}
+          onClose={() => setPinOpen(false)}
+          onSuccess={() => {
+            setUnlocked(true)
+            setPinOpen(false)
+          }}
+          onWrong={() => showToast('PIN 번호가 틀렸어요')}
+        />
+      )}
     </div>
   )
 }
