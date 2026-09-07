@@ -15,7 +15,6 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
   const settled = settlementsForCategory(transactions, cat.id, vKey)
   const effectiveSpent = spent - settled
   const budget = budgetAmountForMonth(livingBudgetChanges, cat, vKey)
-  const isOverride = budget !== cat.limit
   const pct = budget ? (effectiveSpent / budget) * 100 : 0
   const barPct = Math.min(100, Math.max(0, pct))
   const color = statusColor(pct)
@@ -51,7 +50,7 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
       <div className="env-numbers">
         <span className="env-spent">{fmt(effectiveSpent)}원</span>
         <span className="env-limit">
-          / {fmt(budget)}원{isOverride ? <small style={{ opacity: 0.6 }}> (기본 {fmt(cat.limit)})</small> : null}{' '}
+          / {fmt(budget)}원{' '}
           <button
             className="mr-budget-edit"
             title="이번 달부터 예산 수정"

@@ -87,7 +87,7 @@ export default function AssetScreen() {
                   {entries.length ? (
                     entries.map((e) => (
                       <div key={e.id} className="asset-entry-row">
-                        <span>{e.month}</span>
+                        <span>{e.createdAt ? e.createdAt.slice(0, 10) : e.month}</span>
                         <span>
                           {fmt(e.amount)}원{e.note ? ` · ${e.note}` : ''}
                         </span>
