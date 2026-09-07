@@ -55,6 +55,12 @@ export default function TxModal() {
     setFAmount('')
   }
 
+  // 커스텀 금액 키패드가 열린 채로 다른 입력칸(가맹점/날짜 등)을 탭하면, 그 칸의 실제 키보드가 뜨면서
+  // 화면 하단에 고정된 키패드와 겹쳐 탭이 먹통이 될 수 있다 — 다른 필드에 포커스가 가면 먼저 닫는다.
+  function closeAmountKeypad() {
+    setAmountKeypadOpen(false)
+  }
+
   // 시트가 열릴 때(또는 편집 대상이 바뀔 때) 폼을 원본 openSheet()와 동일한 규칙으로 채운다.
   useEffect(() => {
     if (!txSheetOpen) return
@@ -253,13 +259,13 @@ export default function TxModal() {
             {!isTransfer && (
               <div className="field">
                 <label>가맹점 / 내용</label>
-                <input type="text" placeholder="예) 스타벅스" value={fMerchant} onChange={(e) => setFMerchant(e.target.value)} />
+                <input type="text" placeholder="예) 스타벅스" value={fMerchant} onFocus={closeAmountKeypad} onChange={(e) => setFMerchant(e.target.value)} />
               </div>
             )}
 
             <div className="field">
               <label>날짜</label>
-              <input type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} />
+              <input type="date" value={fDate} onFocus={closeAmountKeypad} onChange={(e) => setFDate(e.target.value)} />
             </div>
 
             {!isTransfer && (
@@ -295,7 +301,7 @@ export default function TxModal() {
                   ))}
                 </div>
                 {(isIncome || isSettlement) && (
-                  <input type="text" placeholder="직접 입력도 가능" style={{ marginTop: 8 }} value={fSubcat} onChange={(e) => setFSubcat(e.target.value)} />
+                  <input type="text" placeholder="직접 입력도 가능" style={{ marginTop: 8 }} value={fSubcat} onFocus={closeAmountKeypad} onChange={(e) => setFSubcat(e.target.value)} />
                 )}
               </div>
             )}
@@ -305,7 +311,7 @@ export default function TxModal() {
                 <label>
                   할부 <span style={{ fontWeight: 400, opacity: 0.6 }}>(선택, 개월 · 비우면 일시불)</span>
                 </label>
-                <input type="number" min="1" max="36" placeholder="일시불" value={fInstallment} onChange={(e) => setFInstallment(e.target.value)} />
+                <input type="number" min="1" max="36" placeholder="일시불" value={fInstallment} onFocus={closeAmountKeypad} onChange={(e) => setFInstallment(e.target.value)} />
               </div>
             )}
 

@@ -219,7 +219,7 @@
   .field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; letter-spacing:0.3px; }
   .field input, .field select{ width:100%; padding:12px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'Pretendard'; font-size:15px; color:var(--ink); }
   .field input:focus, .field select:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
-  .amount-display{ display:block; width:100%; text-align:left; -webkit-appearance:none; appearance:none; padding:14px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:700; color:var(--ink); cursor:pointer; }
+  .amount-display{ display:block; width:100%; text-align:right; -webkit-appearance:none; appearance:none; padding:14px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:700; color:var(--ink); cursor:pointer; }
   .amt-keypad{
     position:fixed; left:0; right:0; bottom:0; z-index:33; background:var(--paper); border-radius:22px 22px 0 0;
     box-shadow:0 -10px 30px rgba(19,42,51,0.2); max-width:480px; margin:0 auto;
