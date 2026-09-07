@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { elapsedMonths, installmentBaseAmount, fmt, todayKST } from '../lib/calc.js'
 
@@ -17,7 +17,6 @@ export default function TxModal() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
-  const payMethods = useAppStore((s) => s.payMethods)
   const selectedCalDate = useAppStore((s) => s.selectedCalDate)
   const submitTransaction = useAppStore((s) => s.submitTransaction)
   const updateInstallmentOverride = useAppStore((s) => s.updateInstallmentOverride)
@@ -37,16 +36,24 @@ export default function TxModal() {
   const [submitting, setSubmitting] = useState(false)
   const [bonusPrompt, setBonusPrompt] = useState(null)
   const [bonusPercentInput, setBonusPercentInput] = useState('10')
-  const amountRef = useRef(null)
+  const [amountKeypadOpen, setAmountKeypadOpen] = useState(false)
 
   const editing = editingTxId ? transactions.find((t) => t.id === editingTxId) : null
 
-  // 열릴 때마다 금액 입력에 포커스 (슬라이드업 애니메이션이 끝날 무렵)
+  // 시트가 닫히면 키패드도 같이 닫는다. 열릴 때 자동으로는 안 띄우고, 금액 칸을 탭해야 뜬다.
   useEffect(() => {
-    if (!txSheetOpen) return
-    const timer = setTimeout(() => amountRef.current && amountRef.current.focus(), 250)
-    return () => clearTimeout(timer)
+    if (!txSheetOpen) setAmountKeypadOpen(false)
   }, [txSheetOpen])
+
+  function handleKeypadDigit(d) {
+    setFAmount((cur) => (cur + d).replace(/^0+(?=\d)/, '').slice(0, 12))
+  }
+  function handleKeypadBackspace() {
+    setFAmount((cur) => cur.slice(0, -1))
+  }
+  function handleKeypadClear() {
+    setFAmount('')
+  }
 
   // 시트가 열릴 때(또는 편집 대상이 바뀔 때) 폼을 원본 openSheet()와 동일한 규칙으로 채운다.
   useEffect(() => {
@@ -236,11 +243,8 @@ export default function TxModal() {
 
         <div className="field">
           <label>금액</label>
-          <div className="amount-row">
-            <input ref={amountRef} type="number" inputMode="numeric" placeholder="0" value={fAmount} onChange={(e) => setFAmount(e.target.value)} />
-            <button type="button" className="amount-confirm" onClick={() => amountRef.current && amountRef.current.blur()}>
-              확인
-            </button>
+          <div className="amount-display" onClick={() => setAmountKeypadOpen(true)}>
+            {fAmount ? `${Number(fAmount).toLocaleString('ko-KR')}원` : '0원'}
           </div>
         </div>
 
@@ -282,9 +286,7 @@ export default function TxModal() {
 
             {!isTransfer && (
               <div className="field">
-                <label>
-                  소분류 <span style={{ fontWeight: 400, opacity: 0.6 }}>(선택)</span>
-                </label>
+                <label>소분류</label>
                 <div className="cat-choices">
                   {subPresets.map((name) => (
                     <div key={name} className={`cat-chip${fSubcat.trim() === name ? ' active' : ''}`} onClick={() => setFSubcat(name)}>
@@ -292,22 +294,9 @@ export default function TxModal() {
                     </div>
                   ))}
                 </div>
-                <input type="text" placeholder="직접 입력도 가능" style={{ marginTop: 8 }} value={fSubcat} onChange={(e) => setFSubcat(e.target.value)} />
-              </div>
-            )}
-
-            {!(isTransfer || isIncome || isSettlement) && (
-              <div className="field">
-                <label>
-                  결제수단 <span style={{ fontWeight: 400, opacity: 0.6 }}>(선택)</span>
-                </label>
-                <div className="cat-choices">
-                  {payMethods.map((p) => (
-                    <div key={p.id} className={`cat-chip${selectedPay === p.name ? ' active' : ''}`} onClick={() => setSelectedPay((cur) => (cur === p.name ? null : p.name))}>
-                      {p.name}
-                    </div>
-                  ))}
-                </div>
+                {(isIncome || isSettlement) && (
+                  <input type="text" placeholder="직접 입력도 가능" style={{ marginTop: 8 }} value={fSubcat} onChange={(e) => setFSubcat(e.target.value)} />
+                )}
               </div>
             )}
 
@@ -344,6 +333,33 @@ export default function TxModal() {
           </button>
         )}
       </div>
+
+      {amountKeypadOpen && (
+        <>
+          <div className="sheet-backdrop show" onClick={() => setAmountKeypadOpen(false)} />
+          <div className="amt-keypad">
+            <button className="sheet-submit" onClick={() => setAmountKeypadOpen(false)}>
+              확인
+            </button>
+            <div className="amt-keypad-grid">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+                <button key={d} className="amt-key" onClick={() => handleKeypadDigit(d)}>
+                  {d}
+                </button>
+              ))}
+              <button className="amt-key amt-key-clear" onClick={handleKeypadClear}>
+                전체삭제
+              </button>
+              <button className="amt-key" onClick={() => handleKeypadDigit('0')}>
+                0
+              </button>
+              <button className="amt-key" onClick={handleKeypadBackspace}>
+                ⌫
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className={`sheet-backdrop${bonusPrompt ? ' show' : ''}`} onClick={closeBonusPrompt} />
       <div className={`sheet pin-sheet${bonusPrompt ? ' show' : ''}`}>
