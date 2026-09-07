@@ -355,6 +355,7 @@ export default function TxModal() {
 
       <AmountKeypad
         open={amountKeypadOpen}
+        display={formatAmountDisplay(fAmount)}
         onClose={() => setAmountKeypadOpen(false)}
         onConfirm={() => setAmountKeypadOpen(false)}
         onDigit={(d) => setFAmount((cur) => appendDigit(cur, d))}

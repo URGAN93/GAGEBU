@@ -225,6 +225,7 @@
     box-shadow:0 -10px 30px rgba(19,42,51,0.2); max-width:480px; margin:0 auto;
     padding:14px 14px calc(14px + env(safe-area-inset-bottom,0)) 14px;
   }
+  .amt-keypad-preview{ text-align:right; font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:700; color:var(--ink); padding:2px 4px 14px 4px; }
   .amt-keypad .sheet-submit{ margin-top:0; margin-bottom:12px; }
   .amt-keypad-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
   .amt-key{ padding:16px 0; border-radius:12px; border:1px solid var(--line); background:#fff; font-family:'Pretendard'; font-size:19px; font-weight:600; color:var(--ink); cursor:pointer; }

@@ -65,6 +65,7 @@ export default function AssetEntrySheet({ categoryId, onClose }) {
 
       <AmountKeypad
         open={open && keypadOpen}
+        display={formatAmountDisplay(amount)}
         onClose={() => setKeypadOpen(false)}
         onConfirm={() => setKeypadOpen(false)}
         onDigit={(d) => setAmount((cur) => appendDigit(cur, d))}
