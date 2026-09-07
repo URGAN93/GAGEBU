@@ -259,7 +259,14 @@ export default function TxModal() {
             {!isTransfer && (
               <div className="field">
                 <label>가맹점 / 내용</label>
-                <input type="text" placeholder="예) 스타벅스" value={fMerchant} onFocus={closeAmountKeypad} onChange={(e) => setFMerchant(e.target.value)} />
+                <input
+                  type="text"
+                  placeholder="예) 스타벅스"
+                  style={{ textAlign: 'right' }}
+                  value={fMerchant}
+                  onFocus={closeAmountKeypad}
+                  onChange={(e) => setFMerchant(e.target.value)}
+                />
               </div>
             )}
 
