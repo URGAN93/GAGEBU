@@ -17,6 +17,7 @@ export default function TxModal() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
+  const payMethods = useAppStore((s) => s.payMethods)
   const selectedCalDate = useAppStore((s) => s.selectedCalDate)
   const submitTransaction = useAppStore((s) => s.submitTransaction)
   const updateInstallmentOverride = useAppStore((s) => s.updateInstallmentOverride)
@@ -310,6 +311,19 @@ export default function TxModal() {
                 {(isIncome || isSettlement) && (
                   <input type="text" placeholder="직접 입력도 가능" style={{ marginTop: 8 }} value={fSubcat} onFocus={closeAmountKeypad} onChange={(e) => setFSubcat(e.target.value)} />
                 )}
+              </div>
+            )}
+
+            {!(isTransfer || isIncome || isSettlement) && (
+              <div className="field">
+                <label>결제수단</label>
+                <div className="cat-choices">
+                  {payMethods.map((p) => (
+                    <div key={p.id} className={`cat-chip${selectedPay === p.name ? ' active' : ''}`} onClick={() => setSelectedPay((cur) => (cur === p.name ? null : p.name))}>
+                      {p.name}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
