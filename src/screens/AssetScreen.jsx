@@ -2,19 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { fmt, monthKey, addMonths } from '../lib/calc.js'
 import PinPad from '../components/PinPad.jsx'
+import AssetEntrySheet from '../components/AssetEntrySheet.jsx'
 
 const ASSET_PIN = '0618'
 
 export default function AssetScreen() {
   const assetCategories = useAppStore((s) => s.assetCategories)
   const assetEntries = useAppStore((s) => s.assetEntries)
-  const addAssetEntry = useAppStore((s) => s.addAssetEntry)
   const deleteAssetEntry = useAppStore((s) => s.deleteAssetEntry)
   const showToast = useAppStore((s) => s.showToast)
   const activeCol = useAppStore((s) => s.activeCol)
   const [expandedId, setExpandedId] = useState(null)
   const [unlocked, setUnlocked] = useState(false)
   const [pinOpen, setPinOpen] = useState(false)
+  const [entryCategoryId, setEntryCategoryId] = useState(null)
 
   // 이 탭은 항상 마운트된 채로 CSS로만 숨겨지므로, 다른 탭으로 나가는 순간 다시 잠가서
   // 다음에 자산 탭에 돌아왔을 때 매번 PIN을 다시 물어보게 한다.
@@ -51,15 +52,6 @@ export default function AssetScreen() {
   const avg6 = monthlyDelta.reduce((s, m) => s + m.amount, 0) / 6
   const thisMonthDelta = monthlyDelta[monthlyDelta.length - 1]?.amount || 0
   const maxAbs = Math.max(1, ...monthlyDelta.map((m) => Math.abs(m.amount)))
-
-  const handleAddEntry = async (categoryId) => {
-    const input = prompt('입금(또는 조정) 금액을 입력해주세요 — 빼야 하면 마이너스로 입력')
-    if (input === null) return
-    const amount = parseInt(input.replace(/[^0-9-]/g, ''), 10)
-    if (!amount) return
-    const note = prompt('메모 (선택, 없으면 빈칸으로 확인)', '') || ''
-    await addAssetEntry(categoryId, amount, nowKey, note)
-  }
 
   return (
     <div className="col-asset">
@@ -119,7 +111,7 @@ export default function AssetScreen() {
                     className="asset-add-btn"
                     onClick={(ev) => {
                       ev.stopPropagation()
-                      handleAddEntry(cat.id)
+                      setEntryCategoryId(cat.id)
                     }}
                   >
                     + 입금 추가
@@ -183,6 +175,7 @@ export default function AssetScreen() {
           onWrong={() => showToast('PIN 번호가 틀렸어요')}
         />
       )}
+      <AssetEntrySheet categoryId={entryCategoryId} onClose={() => setEntryCategoryId(null)} />
     </div>
   )
 }

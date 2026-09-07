@@ -229,7 +229,7 @@
   .amt-keypad-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
   .amt-key{ padding:16px 0; border-radius:12px; border:1px solid var(--line); background:#fff; font-family:'Pretendard'; font-size:19px; font-weight:600; color:var(--ink); cursor:pointer; }
   .amt-key:active{ background:var(--paper-dim); }
-  .amt-key-clear{ font-size:12px; font-weight:700; color:var(--over); }
+  .amt-key-sign{ color:var(--ink-soft); }
 
   .type-toggle{ display:flex; gap:8px; margin-bottom:14px; }
   .type-btn{ flex:1; padding:12px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-weight:700; font-size:14px; color:var(--ink-soft); cursor:pointer; text-align:center; }

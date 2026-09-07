@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { elapsedMonths, installmentBaseAmount, fmt, todayKST } from '../lib/calc.js'
+import { appendDigit, backspaceAmount, toggleSign, formatAmountDisplay } from '../lib/amountInput.js'
+import AmountKeypad from './AmountKeypad.jsx'
 
 const TYPE_BUTTONS = [
   { type: 'living', label: '지출' },
@@ -45,16 +47,6 @@ export default function TxModal() {
   useEffect(() => {
     if (!txSheetOpen) setAmountKeypadOpen(false)
   }, [txSheetOpen])
-
-  function handleKeypadDigit(d) {
-    setFAmount((cur) => (cur + d).replace(/^0+(?=\d)/, '').slice(0, 12))
-  }
-  function handleKeypadBackspace() {
-    setFAmount((cur) => cur.slice(0, -1))
-  }
-  function handleKeypadClear() {
-    setFAmount('')
-  }
 
   // 커스텀 금액 키패드가 열린 채로 다른 입력칸(가맹점/날짜 등)을 탭하면, 그 칸의 실제 키보드가 뜨면서
   // 화면 하단에 고정된 키패드와 겹쳐 탭이 먹통이 될 수 있다 — 다른 필드에 포커스가 가면 먼저 닫는다.
@@ -251,7 +243,7 @@ export default function TxModal() {
         <div className="field">
           <label>금액</label>
           <button type="button" className="amount-display" onClick={() => setAmountKeypadOpen(true)}>
-            {fAmount ? `${Number(fAmount).toLocaleString('ko-KR')}원` : '0원'}
+            {formatAmountDisplay(fAmount)}
           </button>
         </div>
 
@@ -361,32 +353,14 @@ export default function TxModal() {
         )}
       </div>
 
-      {amountKeypadOpen && (
-        <>
-          <div className="sheet-backdrop show" onClick={() => setAmountKeypadOpen(false)} />
-          <div className="amt-keypad">
-            <button className="sheet-submit" onClick={() => setAmountKeypadOpen(false)}>
-              확인
-            </button>
-            <div className="amt-keypad-grid">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
-                <button key={d} className="amt-key" onClick={() => handleKeypadDigit(d)}>
-                  {d}
-                </button>
-              ))}
-              <button className="amt-key amt-key-clear" onClick={handleKeypadClear}>
-                전체삭제
-              </button>
-              <button className="amt-key" onClick={() => handleKeypadDigit('0')}>
-                0
-              </button>
-              <button className="amt-key" onClick={handleKeypadBackspace}>
-                ⌫
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <AmountKeypad
+        open={amountKeypadOpen}
+        onClose={() => setAmountKeypadOpen(false)}
+        onConfirm={() => setAmountKeypadOpen(false)}
+        onDigit={(d) => setFAmount((cur) => appendDigit(cur, d))}
+        onBackspace={() => setFAmount((cur) => backspaceAmount(cur))}
+        onToggleSign={() => setFAmount((cur) => toggleSign(cur))}
+      />
 
       <div className={`sheet-backdrop${bonusPrompt ? ' show' : ''}`} onClick={closeBonusPrompt} />
       <div className={`sheet pin-sheet${bonusPrompt ? ' show' : ''}`}>
