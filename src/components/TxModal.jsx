@@ -243,9 +243,9 @@ export default function TxModal() {
 
         <div className="field">
           <label>금액</label>
-          <div className="amount-display" onClick={() => setAmountKeypadOpen(true)}>
+          <button type="button" className="amount-display" onClick={() => setAmountKeypadOpen(true)}>
             {fAmount ? `${Number(fAmount).toLocaleString('ko-KR')}원` : '0원'}
-          </div>
+          </button>
         </div>
 
         {!editingInstMonth && (

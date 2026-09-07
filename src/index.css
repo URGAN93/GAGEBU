@@ -31,7 +31,7 @@
 
   .auth-screen{ position:fixed; inset:0; z-index:60; background:var(--paper); display:flex; align-items:center; justify-content:center; padding:20px; }
   .auth-box{ width:100%; max-width:360px; background:var(--paper-dim); border:1px solid var(--line); border-radius:18px; padding:26px 22px; box-shadow:var(--shadow); }
-  .auth-title{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:22px; margin-bottom:18px; text-align:center; color:var(--ink); }
+  .auth-title{ font-family:'Pretendard', sans-serif; font-weight:800; letter-spacing:-0.3px; font-size:22px; margin-bottom:18px; text-align:center; color:var(--ink); }
 
   #analysisBlurWrap{ transition:filter .25s ease; }
   #analysisBlurWrap.blur-hidden{ filter:blur(9px); user-select:none; pointer-events:none; }
@@ -56,7 +56,7 @@
   }
 
   header{ padding:28px 4px 18px 4px; display:flex; align-items:flex-end; gap:10px; }
-  .month-label{ font-family:'Noto Serif KR', serif; font-weight:700; font-size:26px; letter-spacing:-0.5px; }
+  .month-label{ font-family:'Pretendard', sans-serif; font-weight:800; font-size:26px; letter-spacing:-0.6px; }
   .month-label small{ display:block; font-family:'Pretendard'; font-weight:500; font-size:12.5px; color:var(--ink-soft); opacity:0.65; letter-spacing:1.5px; margin-bottom:4px; }
   .month-nav{ display:flex; gap:6px; }
   .month-nav button{ width:30px;height:30px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--ink); font-size:14px; cursor:pointer; }
@@ -214,12 +214,12 @@
   }
   .sheet.show{ transform:translateY(0); }
   .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:4px; margin:0 auto 16px auto; }
-  .sheet h3{ margin:0 0 16px 0; font-family:'Noto Serif KR', serif; font-size:19px; }
+  .sheet h3{ margin:0 0 16px 0; font-family:'Pretendard', sans-serif; font-weight:800; letter-spacing:-0.3px; font-size:19px; }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; letter-spacing:0.3px; }
   .field input, .field select{ width:100%; padding:12px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'Pretendard'; font-size:15px; color:var(--ink); }
   .field input:focus, .field select:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
-  .amount-display{ width:100%; padding:14px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:700; color:var(--ink); cursor:pointer; }
+  .amount-display{ display:block; width:100%; text-align:left; -webkit-appearance:none; appearance:none; padding:14px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:700; color:var(--ink); cursor:pointer; }
   .amt-keypad{
     position:fixed; left:0; right:0; bottom:0; z-index:33; background:var(--paper); border-radius:22px 22px 0 0;
     box-shadow:0 -10px 30px rgba(19,42,51,0.2); max-width:480px; margin:0 auto;
