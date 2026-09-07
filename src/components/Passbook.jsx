@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { fmt, monthKey, expandMonthTx, budgetAmountForMonth, monthlyAmountForMonth, activeFixedExpenses } from '../lib/calc.js'
+import { fmt, monthKey, expandMonthTx, budgetAmountForMonth, monthlyAmountForMonth, activeFixedExpenses, fixedAmountForMonth } from '../lib/calc.js'
 
 export default function Passbook() {
   const viewDate = useAppStore((s) => s.viewDate)
@@ -10,6 +10,7 @@ export default function Passbook() {
   const livingBudgetChanges = useAppStore((s) => s.livingBudgetChanges)
   const envelopeRateChanges = useAppStore((s) => s.envelopeRateChanges)
   const fixedExpenses = useAppStore((s) => s.fixedExpenses)
+  const fixedRateChanges = useAppStore((s) => s.fixedRateChanges)
 
   const vKey = monthKey(viewDate)
 
@@ -24,9 +25,9 @@ export default function Passbook() {
     const rawSpent = livingTx.reduce((s, t) => s + t.amount, 0) + irregularTxThisMonth.reduce((s, t) => s + t.amount, 0)
     const totalSpent = rawSpent - totalSettled
     const totalPct = totalBudget ? Math.min(100, (totalSpent / totalBudget) * 100) : 0
-    const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((s, f) => s + f.amount, 0)
+    const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
     return { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct }
-  }, [transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, vKey])
+  }, [transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges, vKey])
 
   const remain = totalBudget - totalSpent
 

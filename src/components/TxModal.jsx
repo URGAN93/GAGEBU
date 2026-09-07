@@ -35,6 +35,8 @@ export default function TxModal() {
   const [fSubcat, setFSubcat] = useState('')
   const [fInstallment, setFInstallment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [bonusPrompt, setBonusPrompt] = useState(null)
+  const [bonusPercentInput, setBonusPercentInput] = useState('10')
   const amountRef = useRef(null)
 
   const editing = editingTxId ? transactions.find((t) => t.id === editingTxId) : null
@@ -182,16 +184,12 @@ export default function TxModal() {
       const result = await submitTransaction(editingTxId, payload)
       closeTxSheet()
 
-      // 추가수입(상여금/연주비/기타) 카테고리로 신규 수입을 넣었으면, 10%를 개인용돈에 적립할지 매번 확인한다 (일회성)
+      // 추가수입(상여금/연주비/기타) 카테고리로 신규 수입을 넣었으면, 개인용돈에 몇 %를 적립할지 매번 물어본다 (일회성)
       if (result.ok && !editingTxId && isIncome) {
         const incomeCatName = (incomeCategories.find((c) => c.id === payload.categoryId) || {}).name
         if (incomeCatName === '추가수입') {
-          const bonusAmount = Math.round(payload.amount * 0.1)
-          const input = prompt(`개인용돈에 10%(${fmt(bonusAmount)}원)를 적립할까요? 원치 않으면 취소, 금액을 바꾸려면 수정 후 확인을 눌러주세요.`, bonusAmount)
-          if (input !== null) {
-            const bonusAmt = Math.max(0, parseInt(input, 10) || 0)
-            if (bonusAmt > 0) await addBonusToAllowance(bonusAmt, payload.date.slice(0, 7), `${payload.merchant || payload.subcat || '추가수입'} 10%`)
-          }
+          setBonusPercentInput(localStorage.getItem('bonusAllowancePercent') || '10')
+          setBonusPrompt({ amount: payload.amount, month: payload.date.slice(0, 7), merchant: payload.merchant || payload.subcat || '추가수입' })
         }
       }
     } finally {
@@ -203,6 +201,20 @@ export default function TxModal() {
     if (!editingTxId) return
     await deleteTransaction(editingTxId)
     closeTxSheet()
+  }
+
+  const bonusPercent = parseFloat(bonusPercentInput)
+  const bonusAmount = bonusPrompt && bonusPercent > 0 ? Math.round(bonusPrompt.amount * (bonusPercent / 100)) : 0
+
+  function closeBonusPrompt() {
+    setBonusPrompt(null)
+  }
+
+  async function handleBonusConfirm() {
+    if (!bonusPrompt || !(bonusAmount > 0)) return
+    localStorage.setItem('bonusAllowancePercent', bonusPercentInput)
+    await addBonusToAllowance(bonusAmount, bonusPrompt.month, `${bonusPrompt.merchant} ${bonusPercentInput}%`)
+    setBonusPrompt(null)
   }
 
   return (
@@ -224,7 +236,12 @@ export default function TxModal() {
 
         <div className="field">
           <label>금액</label>
-          <input ref={amountRef} type="number" inputMode="numeric" placeholder="0" value={fAmount} onChange={(e) => setFAmount(e.target.value)} />
+          <div className="amount-row">
+            <input ref={amountRef} type="number" inputMode="numeric" placeholder="0" value={fAmount} onChange={(e) => setFAmount(e.target.value)} />
+            <button type="button" className="amount-confirm" onClick={() => amountRef.current && amountRef.current.blur()}>
+              확인
+            </button>
+          </div>
         </div>
 
         {!editingInstMonth && (
@@ -325,6 +342,28 @@ export default function TxModal() {
           <button className="sheet-delete" onClick={handleDelete}>
             이 지출 삭제하기
           </button>
+        )}
+      </div>
+
+      <div className={`sheet-backdrop${bonusPrompt ? ' show' : ''}`} onClick={closeBonusPrompt} />
+      <div className={`sheet pin-sheet${bonusPrompt ? ' show' : ''}`}>
+        <div className="sheet-handle" />
+        <h3>개인용돈 적립</h3>
+        {bonusPrompt && (
+          <>
+            <p className="bonus-desc">{fmt(bonusPrompt.amount)}원 수입 중 몇 %를 개인용돈에 적립할까요?</p>
+            <div className="field">
+              <label>적립 비율(%)</label>
+              <input type="number" inputMode="decimal" min="0" max="100" value={bonusPercentInput} onChange={(e) => setBonusPercentInput(e.target.value)} />
+            </div>
+            <div className="bonus-preview">{fmt(bonusAmount)}원 적립돼요</div>
+            <button className="sheet-submit" disabled={!(bonusAmount > 0)} onClick={handleBonusConfirm}>
+              적립하기
+            </button>
+            <button className="sheet-delete" style={{ marginTop: 10 }} onClick={closeBonusPrompt}>
+              건너뛰기
+            </button>
+          </>
         )}
       </div>
     </>

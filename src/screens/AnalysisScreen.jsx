@@ -5,6 +5,7 @@ import {
   monthKey,
   fmt,
   activeFixedExpenses,
+  fixedAmountForMonth,
   sortTx,
   budgetAmountForMonth,
   settlementsForCategory,
@@ -32,6 +33,7 @@ export default function AnalysisScreen() {
   const viewDate = useAppStore((s) => s.viewDate)
   const transactions = useAppStore((s) => s.transactions)
   const fixedExpenses = useAppStore((s) => s.fixedExpenses)
+  const fixedRateChanges = useAppStore((s) => s.fixedRateChanges)
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
@@ -64,7 +66,7 @@ export default function AnalysisScreen() {
     if (currentView !== 'expense') setCurrentCatFilter('')
   }, [currentView])
 
-  const fixedTotal = activeFixed.reduce((s, f) => s + f.amount, 0)
+  const fixedTotal = activeFixed.reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
   const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const settled = monthTx.filter((t) => t.type === 'settlement').reduce((s, t) => s + t.amount, 0)
   const rawExpense = monthTx.filter((t) => t.type === 'living' || t.type === 'irregular').reduce((s, t) => s + t.amount, 0) + fixedTotal
@@ -107,7 +109,7 @@ export default function AnalysisScreen() {
       payTotals[t.payMethod] = (payTotals[t.payMethod] || 0) + t.amount
     })
   activeFixed.forEach((f) => {
-    if (f.payMethod) payTotals[f.payMethod] = (payTotals[f.payMethod] || 0) + f.amount
+    if (f.payMethod) payTotals[f.payMethod] = (payTotals[f.payMethod] || 0) + fixedAmountForMonth(fixedRateChanges, f, vKey)
   })
   const payEntries = Object.entries(payTotals).sort((a, b) => b[1] - a[1])
 

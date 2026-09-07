@@ -1,8 +1,11 @@
-import { fmt, fixedInstallmentIndex } from '../lib/calc.js'
+import { useAppStore } from '../store/useAppStore.js'
+import { fmt, fixedInstallmentIndex, fixedAmountForMonth } from '../lib/calc.js'
 
 // 분석 탭 내역 리스트에 끼워넣는 고정지출 한 줄 (탭해도 아무 동작 없음 — 원본과 동일)
 export default function FixedTxRow({ f, vKey }) {
+  const fixedRateChanges = useAppStore((s) => s.fixedRateChanges)
   const idx = fixedInstallmentIndex(f, vKey)
+  const amount = fixedAmountForMonth(fixedRateChanges, f, vKey)
   return (
     <div className="tx-item" style={{ cursor: 'default' }}>
       <div className="tx-left">
@@ -29,7 +32,7 @@ export default function FixedTxRow({ f, vKey }) {
         <span className="tx-meta">고정지출{f.payMethod ? ` · ${f.payMethod}` : ''}</span>
       </div>
       <span className="tx-amt" style={{ color: 'var(--gold)', fontWeight: 700 }}>
-        -{fmt(f.amount)}원
+        -{fmt(amount)}원
       </span>
     </div>
   )

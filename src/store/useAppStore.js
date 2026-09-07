@@ -4,6 +4,7 @@ import { resolveHousehold, loadState, migratePersonalAllowance, SupabaseUnreacha
 import {
   budgetChangeToRow,
   rateChangeToRow,
+  fixedRateChangeToRow,
   txToRow,
   bonusCreditToRow,
   livingCatToRow,
@@ -54,6 +55,7 @@ const initialData = {
   payMethods: [],
   livingBudgetChanges: [],
   envelopeRateChanges: [],
+  fixedRateChanges: [],
   envelopeBonusCredits: [],
   assetCategories: [],
   assetEntries: [],
@@ -213,6 +215,22 @@ export const useAppStore = create((set, get) => ({
     })
   },
 
+  async upsertFixedRate(fixedExpenseId, effectiveMonth, amount) {
+    await upsertRateChange(get, set, {
+      list: get().fixedRateChanges,
+      listKey: 'fixedRateChanges',
+      table: 'fixed_expense_rate_changes',
+      toRow: fixedRateChangeToRow,
+      idPrefix: 'ferc',
+      keyField: 'fixedExpenseId',
+      keyValue: fixedExpenseId,
+      effectiveMonth,
+      amount,
+      failMsg: '고정지출 금액 수정 실패 (SQL 마이그레이션이 필요할 수 있어요)',
+      successMsg: `${effectiveMonth}부터 적용되는 고정지출 금액을 수정했어요`,
+    })
+  },
+
   openSettingsSheet() {
     set({ settingsSheetOpen: true })
   },
@@ -320,32 +338,6 @@ export const useAppStore = create((set, get) => ({
     return { ok: true }
   },
 
-  // 고정지출의 금액/결제수단/할부 정보를 그 자리에서 바로 수정 (저장하기 버튼 안 기다림 — 예산 탭 카드 전용).
-  async updateFixedExpense(id, patch) {
-    const idx = get().fixedExpenses.findIndex((f) => f.id === id)
-    if (idx === -1) return
-    const updated = { ...get().fixedExpenses[idx], ...patch }
-    const { error } = await sb.from('fixed_expenses').upsert(fixedToRow(updated, idx, get().household))
-    if (error) {
-      get().showToast('고정지출 수정 실패')
-      console.error(error)
-      return
-    }
-    set((s) => ({ fixedExpenses: s.fixedExpenses.map((f) => (f.id === id ? updated : f)) }))
-    get().showToast('고정지출을 수정했어요')
-  },
-
-  // updateFixedExpense와 똑같이 upsert를 쓴다 — update()였을 때는 방금 추가만 하고 아직 "저장하기"를
-  // 안 누른(= DB에 아직 없는) 고정지출에 마감을 누르면 0건 갱신으로 조용히 씹히는 문제가 있었다.
-  async toggleFixedEnd(id) {
-    const f = get().fixedExpenses.find((x) => x.id === id)
-    if (!f) return
-    const closing = !f.endMonth
-    const newEndMonth = closing ? monthKey(get().viewDate) : null
-    await get().updateFixedExpense(id, { endMonth: newEndMonth })
-    get().showToast(closing ? '마감 처리했어요' : '마감을 취소했어요')
-  },
-
   // 드래그로 순서 바꾼 뒤 확정된 id 순서를 로컬 배열 순서에 반영 (Supabase에는 저장하기 버튼을 눌러야 반영됨 — 원본과 동일)
   reorderList(listKey, orderedIds) {
     set((s) => {
@@ -368,8 +360,8 @@ export const useAppStore = create((set, get) => ({
     const { error: e3 } = await sb.from('fixed_expenses').upsert(fixedExpenses.map((f, i) => fixedToRow(f, i, s.household)))
     const { error: e4 } = await sb.from('pay_methods').upsert(payMethods.map((p, i) => payToRow(p, i)))
     let e5 = null
-    if (s.household && incomeCategories.length) {
-      const { error } = await sb.from('income_categories').upsert(incomeCategories.map((c, i) => incomeCatToRow(c, i, s.household)))
+    if (incomeCategories.length) {
+      const { error } = await sb.from('income_categories').upsert(incomeCategories.map((c, i) => incomeCatToRow(c, i, s.myUserId)))
       e5 = error
     }
     if (e1 || e2 || e3 || e4 || e5) {

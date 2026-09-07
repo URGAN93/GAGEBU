@@ -83,14 +83,23 @@ export function rateChangeToRow(r) {
   return { id: r.id, envelope_id: r.envelopeId, effective_month: r.effectiveMonth, monthly_amount: r.amount }
 }
 
+export function rowToFixedRateChange(r) {
+  return { id: r.id, fixedExpenseId: r.fixed_expense_id, effectiveMonth: r.effective_month, amount: r.amount }
+}
+
+export function fixedRateChangeToRow(r, household) {
+  const row = { id: r.id, fixed_expense_id: r.fixedExpenseId, effective_month: r.effectiveMonth, amount: r.amount }
+  if (household) row.household_id = household.id
+  return row
+}
+
+// income_categories는 pay_methods와 동일하게 개인(user_id) 소유다 (v7 마이그레이션으로 household 공유에서 전환됨).
 export function rowToIncomeCat(r) {
   return { id: r.id, name: r.name, color: r.color, subcats: r.subcats || [] }
 }
 
-export function incomeCatToRow(c, idx, household) {
-  const row = { id: c.id, name: c.name, color: c.color, subcats: c.subcats || [], sort_order: idx }
-  if (household) row.household_id = household.id
-  return row
+export function incomeCatToRow(c, idx, myUserId) {
+  return { id: c.id, name: c.name, color: c.color, subcats: c.subcats || [], sort_order: idx, user_id: myUserId }
 }
 
 export function rowToBonusCredit(r) {

@@ -7,6 +7,7 @@ import {
   irregularToRow,
   rowToBudgetChange,
   rowToRateChange,
+  rowToFixedRateChange,
   rowToIncomeCat,
   incomeCatToRow,
   rowToBonusCredit,
@@ -157,6 +158,16 @@ export async function loadState(household, myUserId, members) {
     console.warn('envelope_rate_changes 테이블을 아직 사용할 수 없어요 (SQL 마이그레이션 필요할 수 있음):', err)
   }
 
+  // fixed_expense_rate_changes도 SQL 마이그레이션(v8) 전이면 테이블이 없을 수 있어 별도 처리
+  let fixedRateChanges = []
+  try {
+    const { data: fixedRateRows, error: eFixedRate } = await sb.from('fixed_expense_rate_changes').select('*')
+    if (eFixedRate) throw eFixedRate
+    fixedRateChanges = (fixedRateRows || []).map(rowToFixedRateChange)
+  } catch (err) {
+    console.warn('fixed_expense_rate_changes 테이블을 아직 사용할 수 없어요 (SQL v8 마이그레이션 필요할 수 있음):', err)
+  }
+
   // envelope_bonus_credits (SQL v3)
   let envelopeBonusCredits = []
   try {
@@ -167,22 +178,26 @@ export async function loadState(household, myUserId, members) {
     console.warn('envelope_bonus_credits 테이블을 아직 사용할 수 없어요 (SQL v3 마이그레이션 필요할 수 있음):', err)
   }
 
-  // income_categories (SQL v3). household가 있는데 비어있으면 기본값(정기수입/추가수입) 씨딩
+  // income_categories (SQL v3, v7부터 pay_methods처럼 개인(user_id) 소유). 이 계정 소유 행이 하나도 없으면
+  // (신규 계정이거나 household에 새로 가입한 경우) 기본값(정기수입/추가수입)을 개인 소유로 씨딩한다.
   let incomeCategories = []
   try {
     const { data: incomeRows, error: eIncome } = await sb.from('income_categories').select('*').order('sort_order')
     if (eIncome) throw eIncome
-    if ((!incomeRows || !incomeRows.length) && household) {
-      await sb
-        .from('income_categories')
-        .insert(DEFAULT_STATE.incomeCategories.map((c, i) => incomeCatToRow({ ...c, id: c.id + idSuffix(household.id) }, i, household)))
+    if (!incomeRows || !incomeRows.length) {
+      await sb.from('income_categories').insert(
+        DEFAULT_STATE.incomeCategories.map((c, i) => {
+          const cat = userSuffix ? { ...c, id: c.id + userSuffix } : c
+          return incomeCatToRow(cat, i, myUserId)
+        }),
+      )
       const { data: seeded } = await sb.from('income_categories').select('*').order('sort_order')
       incomeCategories = (seeded || []).map(rowToIncomeCat)
     } else {
-      incomeCategories = (incomeRows || []).map(rowToIncomeCat)
+      incomeCategories = incomeRows.map(rowToIncomeCat)
     }
   } catch (err) {
-    console.warn('income_categories 테이블을 아직 사용할 수 없어요 (SQL v3 마이그레이션 필요할 수 있음):', err)
+    console.warn('income_categories 테이블을 아직 사용할 수 없어요 (SQL v3/v7 마이그레이션 필요할 수 있음):', err)
   }
 
   // asset_categories + asset_entries (SQL v6). household가 있는데 비어있으면 기본값(예적금/CMA/기타) 씨딩
@@ -230,10 +245,11 @@ export async function loadState(household, myUserId, members) {
     payMethods: payRows.length ? payRows.map(rowToPay) : structuredClone(DEFAULT_STATE.payMethods),
     livingBudgetChanges,
     envelopeRateChanges,
+    fixedRateChanges,
     envelopeBonusCredits,
     assetCategories: assetCategories.length ? assetCategories : household ? [] : structuredClone(DEFAULT_STATE.assetCategories),
     assetEntries,
-    incomeCategories: incomeCategories.length ? incomeCategories : household ? [] : structuredClone(DEFAULT_STATE.incomeCategories),
+    incomeCategories: incomeCategories.length ? incomeCategories : structuredClone(DEFAULT_STATE.incomeCategories),
     household: household || null,
     myUserId: myUserId || null,
     householdMembers: members || [],

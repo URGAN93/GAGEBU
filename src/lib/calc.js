@@ -139,6 +139,11 @@ export function monthlyAmountForMonth(envelopeRateChanges, env, yearMonth) {
   return latestRateChange(envelopeRateChanges, 'envelopeId', env.id, yearMonth, env.monthlyAmount)
 }
 
+// 고정지출의 특정 달 금액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 f.amount(기본값)
+export function fixedAmountForMonth(fixedRateChanges, f, yearMonth) {
+  return latestRateChange(fixedRateChanges, 'fixedExpenseId', f.id, yearMonth, f.amount)
+}
+
 // start_month부터 toMonth까지, 각 달마다 그 달 시점의 충전액을 적용해 누적 적립액을 합산하고,
 // 그 기간에 들어온 1회성 보너스 적립(envelopeBonusCredits)도 더한다.
 export function creditedForEnvelope(envelopeRateChanges, envelopeBonusCredits, env, fromMonth, toMonth) {

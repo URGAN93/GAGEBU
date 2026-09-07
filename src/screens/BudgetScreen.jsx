@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { expandMonthTx, monthKey, activeFixedExpenses, fmt } from '../lib/calc.js'
+import { expandMonthTx, monthKey, activeFixedExpenses, fixedAmountForMonth, fmt } from '../lib/calc.js'
 import Passbook from '../components/Passbook.jsx'
 import SectionToggle from '../components/SectionToggle.jsx'
 import LivingEnvelopeCard from '../components/LivingEnvelopeCard.jsx'
@@ -13,6 +13,7 @@ export default function BudgetScreen() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const fixedExpenses = useAppStore((s) => s.fixedExpenses)
+  const fixedRateChanges = useAppStore((s) => s.fixedRateChanges)
 
   const vKey = monthKey(viewDate)
   const livingTx = useMemo(() => expandMonthTx(transactions, vKey).filter((t) => t.type === 'living'), [transactions, vKey])
@@ -20,8 +21,8 @@ export default function BudgetScreen() {
   // 어긋나고, 카드 안 할부 회차 표시(역시 vKey 기준)와도 안 맞아버린다.
   const activeFixedIds = useMemo(() => new Set(activeFixedExpenses(fixedExpenses, vKey).map((f) => f.id)), [fixedExpenses, vKey])
   const fixedTotal = useMemo(
-    () => fixedExpenses.filter((f) => activeFixedIds.has(f.id)).reduce((s, f) => s + f.amount, 0),
-    [fixedExpenses, activeFixedIds],
+    () => fixedExpenses.filter((f) => activeFixedIds.has(f.id)).reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0),
+    [fixedExpenses, activeFixedIds, fixedRateChanges, vKey],
   )
   const sortedFixed = useMemo(() => {
     return [...fixedExpenses].sort((a, b) => {

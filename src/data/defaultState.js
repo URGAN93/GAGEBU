@@ -48,6 +48,7 @@ export const DEFAULT_STATE = {
   ],
   livingBudgetChanges: [],
   envelopeRateChanges: [],
+  fixedRateChanges: [],
   envelopeBonusCredits: [],
   assetCategories: [
     { id: 'asset_savings', name: '예적금', color: PALETTE[0] },
