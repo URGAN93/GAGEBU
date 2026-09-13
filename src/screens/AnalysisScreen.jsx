@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import {
   expandMonthTx,
@@ -43,6 +43,7 @@ export default function AnalysisScreen() {
   const openTxSheet = useAppStore((s) => s.openTxSheet)
   const myUserId = useAppStore((s) => s.myUserId)
   const householdMembers = useAppStore((s) => s.householdMembers)
+  const payMethods = useAppStore((s) => s.payMethods)
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
   const vKey = monthKey(viewDate)
@@ -58,6 +59,46 @@ export default function AnalysisScreen() {
   const [selectedPayFilter, setSelectedPayFilter] = useState(null)
   const [payOwnerFilter, setPayOwnerFilter] = useState('all')
   const [fixedSectionCollapsed, setFixedSectionCollapsed] = useState(true)
+  const [otherLabel, setOtherLabel] = useState(() => {
+    try {
+      return localStorage.getItem('payOwnerOtherLabel') || '배우자'
+    } catch {
+      return '배우자'
+    }
+  })
+  const otherLongPressTimer = useRef(null)
+  const otherLongPressFired = useRef(false)
+
+  // "배우자" 버튼은 짧게 누르면 필터 전환, 꾹 누르고 있으면 표시 이름을 바꿀 수 있게 한다
+  // (탭할 때마다 필터가 바뀌어야 하니 단순 클릭과 겹치지 않게 꾹 누르기로만 이름 수정을 연다).
+  function handleOtherPressStart() {
+    otherLongPressFired.current = false
+    otherLongPressTimer.current = setTimeout(() => {
+      otherLongPressFired.current = true
+      const input = prompt('상대방 표시 이름을 입력해주세요', otherLabel)
+      if (input && input.trim()) {
+        const val = input.trim()
+        setOtherLabel(val)
+        try {
+          localStorage.setItem('payOwnerOtherLabel', val)
+        } catch {
+          // localStorage 사용 불가 환경이면 이번 세션에서만 적용
+        }
+      }
+    }, 550)
+  }
+  function handleOtherPressEnd() {
+    clearTimeout(otherLongPressTimer.current)
+  }
+  function handleOtherClick() {
+    if (otherLongPressFired.current) {
+      otherLongPressFired.current = false
+      return
+    }
+    setPayOwnerFilter('other')
+    setSelectedPayFilter(null)
+    setPayPage(0)
+  }
 
   // 분석 탭을 벗어나면 항상 다시 블러 처리 (원본 setActiveCol의 동작과 동일)
   useEffect(() => {
@@ -112,10 +153,15 @@ export default function AnalysisScreen() {
   // ── 결제수단별 요약/리스트 ──
   // 가계부 구성원이 2명 이상이면 "전체/나/배우자"로 나눠 볼 수 있다. 거래(transactions)는
   // user_id로 누가 입력했는지 알 수 있지만, 고정지출은 개인 소유가 아니라 household 공유라서
-  // 누구 것인지 구분할 수 없다 — 그래서 "나"/"배우자"로 좁히면 고정지출은 집계에서 뺀다.
+  // DB상으로는 누구 것인지 구분할 수 없다. 대신 결제수단(pay_methods)은 개인 소유라 내 계정엔
+  // 내 결제수단만 보이므로, 고정지출의 결제수단 이름이 "내" 결제수단 목록에 있으면 내 것으로,
+  // 없으면(=배우자 결제수단일 가능성이 높음) 배우자 것으로 추정해서 배분한다.
   const hasMultipleMembers = householdMembers.length > 1
+  const isMyPayMethod = (name) => payMethods.some((p) => p.name === name)
   const payTxFilter =
     payOwnerFilter === 'mine' ? (t) => t.userId === myUserId : payOwnerFilter === 'other' ? (t) => t.userId !== myUserId : () => true
+  const fixedPayFilter =
+    payOwnerFilter === 'mine' ? (f) => isMyPayMethod(f.payMethod) : payOwnerFilter === 'other' ? (f) => !isMyPayMethod(f.payMethod) : () => true
   const payTotals = {}
   monthTx
     .filter((t) => t.type !== 'transfer' && t.payMethod)
@@ -123,11 +169,9 @@ export default function AnalysisScreen() {
     .forEach((t) => {
       payTotals[t.payMethod] = (payTotals[t.payMethod] || 0) + t.amount
     })
-  if (payOwnerFilter === 'all') {
-    activeFixed.forEach((f) => {
-      if (f.payMethod) payTotals[f.payMethod] = (payTotals[f.payMethod] || 0) + fixedAmountForMonth(fixedRateChanges, f, vKey)
-    })
-  }
+  activeFixed.filter(fixedPayFilter).forEach((f) => {
+    if (f.payMethod) payTotals[f.payMethod] = (payTotals[f.payMethod] || 0) + fixedAmountForMonth(fixedRateChanges, f, vKey)
+  })
   const payEntries = Object.entries(payTotals).sort((a, b) => b[1] - a[1])
   const payGrandTotal = payEntries.reduce((s, [, amt]) => s + amt, 0)
 
@@ -158,7 +202,7 @@ export default function AnalysisScreen() {
     catSummary = { isEnvelope: true, effectiveSpentThisMonth, thisMonthRate, balance }
   }
 
-  const fixedPayRows = selectedPayFilter && payOwnerFilter === 'all' ? fixedExpenses.filter((f) => f.payMethod === selectedPayFilter) : []
+  const fixedPayRows = selectedPayFilter ? fixedExpenses.filter((f) => f.payMethod === selectedPayFilter).filter(fixedPayFilter) : []
   const payFiltered = selectedPayFilter
     ? sortTx(
         monthTx.filter((t) => t.type !== 'transfer' && t.payMethod === selectedPayFilter).filter(payTxFilter),
@@ -302,7 +346,6 @@ export default function AnalysisScreen() {
                 {[
                   { key: 'all', label: '전체' },
                   { key: 'mine', label: '나' },
-                  { key: 'other', label: '배우자' },
                 ].map((b) => (
                   <button
                     key={b.key}
@@ -316,14 +359,23 @@ export default function AnalysisScreen() {
                     {b.label}
                   </button>
                 ))}
+                <button
+                  className={`type-btn${payOwnerFilter === 'other' ? ' active' : ''}`}
+                  title="꾹 누르면 이름을 바꿀 수 있어요"
+                  onMouseDown={handleOtherPressStart}
+                  onMouseUp={handleOtherPressEnd}
+                  onMouseLeave={handleOtherPressEnd}
+                  onTouchStart={handleOtherPressStart}
+                  onTouchEnd={handleOtherPressEnd}
+                  onClick={handleOtherClick}
+                >
+                  {otherLabel}
+                </button>
               </div>
             )}
             {payEntries.length > 0 && (
               <div className="tx-item" style={{ marginBottom: 10 }}>
-                <span className="tx-merchant">
-                  {payOwnerFilter === 'all' ? '전체' : payOwnerFilter === 'mine' ? '나' : '배우자'} 합계
-                  {payOwnerFilter !== 'all' && hasMultipleMembers ? <small style={{ opacity: 0.6 }}> (고정지출 제외)</small> : null}
-                </span>
+                <span className="tx-merchant">{payOwnerFilter === 'all' ? '전체' : payOwnerFilter === 'mine' ? '나' : otherLabel} 합계</span>
                 <span className="tx-amt">{fmt(payGrandTotal)}원</span>
               </div>
             )}
