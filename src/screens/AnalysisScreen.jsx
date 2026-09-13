@@ -41,6 +41,8 @@ export default function AnalysisScreen() {
   const envelopeRateChanges = useAppStore((s) => s.envelopeRateChanges)
   const envelopeBonusCredits = useAppStore((s) => s.envelopeBonusCredits)
   const openTxSheet = useAppStore((s) => s.openTxSheet)
+  const myUserId = useAppStore((s) => s.myUserId)
+  const householdMembers = useAppStore((s) => s.householdMembers)
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
   const vKey = monthKey(viewDate)
@@ -54,12 +56,18 @@ export default function AnalysisScreen() {
   const [txPage, setTxPage] = useState(0)
   const [payPage, setPayPage] = useState(0)
   const [selectedPayFilter, setSelectedPayFilter] = useState(null)
+  const [payOwnerFilter, setPayOwnerFilter] = useState('all')
   const [fixedSectionCollapsed, setFixedSectionCollapsed] = useState(true)
 
   // 분석 탭을 벗어나면 항상 다시 블러 처리 (원본 setActiveCol의 동작과 동일)
   useEffect(() => {
     if (activeCol !== 'analysis') setRevealed(false)
   }, [activeCol])
+
+  // 가계부 구성원이 1명뿐이면 나/배우자 구분이 무의미하니 전체로 되돌린다
+  useEffect(() => {
+    if (householdMembers.length <= 1) setPayOwnerFilter('all')
+  }, [householdMembers.length])
 
   // 지출 탭이 아니면 카테고리 필터는 무의미하니 원본처럼 초기화
   useEffect(() => {
@@ -102,16 +110,26 @@ export default function AnalysisScreen() {
           : '이번 달 내역이 없어요.'
 
   // ── 결제수단별 요약/리스트 ──
+  // 가계부 구성원이 2명 이상이면 "전체/나/배우자"로 나눠 볼 수 있다. 거래(transactions)는
+  // user_id로 누가 입력했는지 알 수 있지만, 고정지출은 개인 소유가 아니라 household 공유라서
+  // 누구 것인지 구분할 수 없다 — 그래서 "나"/"배우자"로 좁히면 고정지출은 집계에서 뺀다.
+  const hasMultipleMembers = householdMembers.length > 1
+  const payTxFilter =
+    payOwnerFilter === 'mine' ? (t) => t.userId === myUserId : payOwnerFilter === 'other' ? (t) => t.userId !== myUserId : () => true
   const payTotals = {}
   monthTx
     .filter((t) => t.type !== 'transfer' && t.payMethod)
+    .filter(payTxFilter)
     .forEach((t) => {
       payTotals[t.payMethod] = (payTotals[t.payMethod] || 0) + t.amount
     })
-  activeFixed.forEach((f) => {
-    if (f.payMethod) payTotals[f.payMethod] = (payTotals[f.payMethod] || 0) + fixedAmountForMonth(fixedRateChanges, f, vKey)
-  })
+  if (payOwnerFilter === 'all') {
+    activeFixed.forEach((f) => {
+      if (f.payMethod) payTotals[f.payMethod] = (payTotals[f.payMethod] || 0) + fixedAmountForMonth(fixedRateChanges, f, vKey)
+    })
+  }
   const payEntries = Object.entries(payTotals).sort((a, b) => b[1] - a[1])
+  const payGrandTotal = payEntries.reduce((s, [, amt]) => s + amt, 0)
 
   // 원본과 동일하게, 이번 달 활성화된 고정지출이 아니라 등록된 전체 고정지출에서 결제수단으로 필터한다
   // ── 카테고리 필터 선택 시 상단에 보여줄 지출/예산 요약 ──
@@ -140,10 +158,10 @@ export default function AnalysisScreen() {
     catSummary = { isEnvelope: true, effectiveSpentThisMonth, thisMonthRate, balance }
   }
 
-  const fixedPayRows = selectedPayFilter ? fixedExpenses.filter((f) => f.payMethod === selectedPayFilter) : []
+  const fixedPayRows = selectedPayFilter && payOwnerFilter === 'all' ? fixedExpenses.filter((f) => f.payMethod === selectedPayFilter) : []
   const payFiltered = selectedPayFilter
     ? sortTx(
-        monthTx.filter((t) => t.type !== 'transfer' && t.payMethod === selectedPayFilter),
+        monthTx.filter((t) => t.type !== 'transfer' && t.payMethod === selectedPayFilter).filter(payTxFilter),
         currentSort,
       )
     : []
@@ -279,6 +297,37 @@ export default function AnalysisScreen() {
 
         {currentView === 'pay' ? (
           <>
+            {hasMultipleMembers && (
+              <div className="type-toggle" style={{ marginBottom: 10 }}>
+                {[
+                  { key: 'all', label: '전체' },
+                  { key: 'mine', label: '나' },
+                  { key: 'other', label: '배우자' },
+                ].map((b) => (
+                  <button
+                    key={b.key}
+                    className={`type-btn${payOwnerFilter === b.key ? ' active' : ''}`}
+                    onClick={() => {
+                      setPayOwnerFilter(b.key)
+                      setSelectedPayFilter(null)
+                      setPayPage(0)
+                    }}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {payEntries.length > 0 && (
+              <div className="tx-item" style={{ marginBottom: 10 }}>
+                <span className="tx-merchant">
+                  {payOwnerFilter === 'all' ? '전체' : payOwnerFilter === 'mine' ? '나' : '배우자'} 합계
+                  {payOwnerFilter !== 'all' && hasMultipleMembers ? <small style={{ opacity: 0.6 }}> (고정지출 제외)</small> : null}
+                </span>
+                <span className="tx-amt">{fmt(payGrandTotal)}원</span>
+              </div>
+            )}
+            {payEntries.length === 0 && <div className="tx-empty">이번 달 내역이 없어요.</div>}
             {payEntries.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                 {payEntries.map(([name, amt]) => (
