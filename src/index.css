@@ -8,6 +8,7 @@
     --ok:#3E7A55;
     --warn:#C08A2E;
     --over:#B04338;
+    --sat-blue:#3E6B9E;
     --irregular:#5C5140;
     --line: rgba(19,42,51,0.14);
     --shadow: 0 10px 26px rgba(19,42,51,0.16);
@@ -185,15 +186,20 @@
 
   .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr) minmax(34px,0.75fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; min-width:0; }
   .cal-dow{ text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); opacity:0.5; padding-bottom:4px; }
+  .cal-dow.sat{ color:var(--sat-blue); opacity:0.8; }
+  .cal-dow.sun{ color:var(--over); opacity:0.8; }
   .cal-day{ aspect-ratio:1; min-width:0; min-height:0; overflow:hidden; border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; gap:2px; background:var(--paper-dim); color:var(--ink-soft); }
   .cal-day.empty{ background:transparent; cursor:default; }
   .cal-day .d-num{ font-weight:700; font-size:12px; color:var(--ink); }
+  .cal-day .d-num.sat{ color:var(--sat-blue); }
+  .cal-day .d-num.sun{ color:var(--over); }
   .cal-day .d-amt{ font-family:'IBM Plex Mono', monospace; font-size:8.5px; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
   .cal-day.has-spend{ background:#fff; border:1px solid var(--line); }
   .cal-week-total{ min-width:0; border-radius:9px; display:flex; align-items:center; justify-content:center; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:8.5px; font-weight:700; color:var(--paper); background:var(--ink); white-space:nowrap; overflow:hidden; padding:0 2px; }
   .cal-day.today{ outline:2px solid var(--gold); }
   .cal-day.selected{ outline:2px solid var(--ink); }
   .cal-tx-list{ margin-top:12px; }
+  .cal-holiday-label{ font-size:11.5px; font-weight:700; color:var(--over); margin-bottom:8px; }
 
   .fab{
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);

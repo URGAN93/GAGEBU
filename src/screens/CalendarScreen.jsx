@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { expandMonthTx, fmtMan, monthKey, todayKST } from '../lib/calc.js'
+import { holidayName } from '../data/holidays.js'
 import { useSwipeMonth } from '../hooks/useSwipeMonth.js'
 import TxRow from '../components/TxRow.jsx'
 
@@ -60,6 +61,7 @@ export default function CalendarScreen() {
   }
 
   const dayTx = useMemo(() => (selectedCalDate ? monthTx.filter((t) => t.date === selectedCalDate) : []), [monthTx, selectedCalDate])
+  const selectedHoliday = selectedCalDate ? holidayName(selectedCalDate) : null
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
 
@@ -68,8 +70,8 @@ export default function CalendarScreen() {
       <div className="calendar-wrap">
         <div ref={areaRef}>
         <div className="cal-grid" ref={dragRef}>
-          {DOW.map((d) => (
-            <div className="cal-dow" key={d}>
+          {DOW.map((d, i) => (
+            <div className={`cal-dow${i === 5 ? ' sat' : i === 6 ? ' sun' : ''}`} key={d}>
               {d}
             </div>
           ))}
@@ -83,13 +85,15 @@ export default function CalendarScreen() {
               if (amt) weekTotal += amt
               const isToday = dateStr === todayStr
               const isSelected = !isToday && dateStr === selectedCalDate
+              const isHoliday = !!holidayName(dateStr)
+              const dNumClass = isHoliday || i === 6 ? 'sun' : i === 5 ? 'sat' : ''
               return (
                 <div
                   key={dateStr}
                   className={`cal-day ${amt ? 'has-spend' : ''} ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}`}
                   onClick={() => setSelectedCalDate(dateStr)}
                 >
-                  <span className="d-num">{day}</span>
+                  <span className={`d-num${dNumClass ? ' ' + dNumClass : ''}`}>{day}</span>
                   {amt ? <span className="d-amt">{fmtMan(amt)}</span> : null}
                 </div>
               )
@@ -105,6 +109,7 @@ export default function CalendarScreen() {
         </div>
         {selectedCalDate && (
           <div className="tx-list cal-tx-list">
+            {selectedHoliday && <div className="cal-holiday-label">{selectedHoliday}</div>}
             {dayTx.length === 0 ? (
               <div className="tx-empty">{selectedCalDate.slice(5).replace('-', '.')}에는 지출이 없어요.</div>
             ) : (
