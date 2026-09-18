@@ -153,7 +153,8 @@ export function monthlyBudgetSummary({ transactions, livingCategories, irregular
   const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((total, f) => total + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
   return { totalSpent, totalBudget, totalSettled, rawSpent, fixedTotal, unbudgetedRaw, unbudgetedSettled, unbudgetedSpent,
     monthlyTotal: totalSpent + unbudgetedSpent + fixedTotal,
-    totalPct: totalBudget ? Math.max(0, Math.min(100, totalSpent / totalBudget * 100)) : 0 }
+    expectedTotal: Math.max(totalBudget, totalSpent) + unbudgetedSpent + fixedTotal,
+    totalPct: totalBudget ? Math.max(0, Math.min(100, totalSpent / totalBudget * 100)) : totalSpent > 0 ? 100 : 0 }
 }
 
 // 누적 카테고리의 특정 달 충전액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 env.monthlyAmount(기본값)

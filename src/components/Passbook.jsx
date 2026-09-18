@@ -14,7 +14,7 @@ export default function Passbook() {
 
   const vKey = monthKey(viewDate)
 
-  const { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct, unbudgetedRaw, unbudgetedSettled, unbudgetedSpent, monthlyTotal } = useMemo(
+  const { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct, unbudgetedRaw, unbudgetedSettled, unbudgetedSpent, monthlyTotal, expectedTotal } = useMemo(
     () => monthlyBudgetSummary({ transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges }, vKey),
     [transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges, vKey],
   )
@@ -27,17 +27,19 @@ export default function Passbook() {
         <h2>이번 달 실지출</h2>
         <div className="monthly-summary-amount">{fmt(monthlyTotal)}<span>원</span></div>
         <p className="monthly-summary-plan">
-          <span>기본 지출 계획 <strong>{fmt(totalBudget + fixedTotal)}원</strong></span>
-          <span className="monthly-summary-plan-exclusion">비정기 별도</span>
+          <span>예상 지출 <strong>{fmt(expectedTotal)}원</strong></span>
         </p>
         <dl className="monthly-summary-breakdown">
-          <div><dt>생활</dt><dd>{fmt(totalSpent)}<span>원</span></dd></div>
+          <div className={remain < 0 ? 'summary-over-budget' : undefined}>
+            <dt>생활</dt><dd>{fmt(totalSpent)}<span>원</span></dd>
+            {remain < 0 && <dd className="summary-overage">{fmt(-remain)}원 초과</dd>}
+          </div>
           <div><dt>비정기</dt><dd>{fmt(unbudgetedSpent)}<span>원</span></dd></div>
           <div><dt>고정</dt><dd>{fmt(fixedTotal)}<span>원</span></dd></div>
         </dl>
         {unbudgetedSettled !== 0 && <p className="monthly-summary-note">비정기 지출 {fmt(unbudgetedRaw)}원 − 정산 {fmt(unbudgetedSettled)}원</p>}
       </section>
-      <section className="monthly-budget" aria-label="생활 예산">
+      <section className={`monthly-budget${remain < 0 ? ' is-over-budget' : ''}`} aria-label="생활 예산">
         <h2>생활 예산</h2>
         <div className="monthly-budget-amount"><strong>{fmt(totalSpent)}</strong><span> / {fmt(totalBudget)}원</span></div>
         {totalSettled !== 0 && <p className="monthly-summary-note">생활 지출 {fmt(rawSpent)}원 − 정산 {fmt(totalSettled)}원</p>}
@@ -45,7 +47,7 @@ export default function Passbook() {
           <div style={{ width: `${totalPct}%`, background: remain < 0 ? 'var(--over)' : 'var(--gold)' }} />
         </div>
         <div className={`monthly-budget-foot${remain < 0 ? ' over-budget' : ''}`}>
-          <span>{Math.round(totalBudget ? (totalSpent / totalBudget) * 100 : 0)}% 사용</span>
+          <span>{totalBudget > 0 ? `${Math.round(totalSpent / totalBudget * 100)}% 사용` : remain < 0 ? '예산 초과' : '0% 사용'}</span>
           <span>{remain >= 0 ? '잔여 ' : '초과 '}{fmt(Math.abs(remain))}원</span>
         </div>
       </section>

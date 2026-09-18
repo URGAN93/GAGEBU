@@ -17,8 +17,9 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
   const budgetEnabled = cat.budgetEnabled !== false
   const budget = budgetAmountForMonth(livingBudgetChanges, cat, vKey)
   const pct = budget ? (effectiveSpent / budget) * 100 : 0
-  const barPct = Math.min(100, Math.max(0, pct))
-  const color = statusColor(pct)
+  const overBudget = budgetEnabled && effectiveSpent > budget
+  const barPct = overBudget ? 100 : Math.min(100, Math.max(0, pct))
+  const color = statusColor(overBudget ? 101 : pct)
   const remainCat = budget - effectiveSpent
 
   const subTotals = {}
@@ -37,7 +38,7 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
   }
 
   return (
-    <div className={`envelope${expanded ? ' expanded' : ''}`} onClick={() => setExpanded((v) => !v)}>
+    <div className={`envelope${expanded ? ' expanded' : ''}${overBudget ? ' is-over-budget' : ''}`} onClick={() => setExpanded((v) => !v)}>
       <div className="env-top">
         <div className="env-name">
           <span className="env-icon" style={{ background: cat.color }} />
@@ -45,7 +46,7 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
           <span className="env-caret">▾</span>
         </div>
         <div className="env-pct" style={{ color, background: color + '1A' }}>
-          {budgetEnabled ? `${Math.round(pct)}%` : '예산 없음'}
+          {budgetEnabled ? overBudget ? '예산 초과' : `${Math.round(pct)}%` : '예산 없음'}
         </div>
       </div>
       <div className="env-numbers">

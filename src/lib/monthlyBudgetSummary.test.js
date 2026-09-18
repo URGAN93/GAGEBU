@@ -13,6 +13,18 @@ const state = {
 }
 
 describe('예산 없는 생활 지출', () => {
+  it.each([
+    [600000, 1380000],
+    [1000000, 1380000],
+    [1100000, 1480000],
+  ])('생활 사용액 %i원일 때 비정기 실부담과 고정을 포함한 예상 지출은 %i원이다', (spent, expected) => {
+    const result = monthlyBudgetSummary({ ...state,
+      transactions: state.transactions.map((t) => t.id === 'food1' ? { ...t, amount: spent } : t),
+      fixedExpenses: [{ id: 'fixed', amount: 300000 }],
+    }, '2026-09')
+    expect(result.expectedTotal).toBe(expected)
+    expect(result.expectedTotal).toBeGreaterThanOrEqual(result.monthlyTotal)
+  })
   it('비정기 정산은 생활 예산 잔액을 늘리지 않고 전체 실지출에 반영한다', () => {
     const result = monthlyBudgetSummary(state, '2026-09')
     expect(result).toMatchObject({ totalBudget: 1000000, totalSpent: 600000, totalPct: 60, totalSettled: 0,

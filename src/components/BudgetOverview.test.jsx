@@ -30,8 +30,8 @@ describe('예산 화면 표시', () => {
     expect(html).toContain('1,100,000')
     expect(html).toContain('<dt>비정기</dt><dd>200,000')
     expect(html).toContain('잔여 400,000원')
-    expect(html).toContain('기본 지출 계획 <strong>1,300,000원</strong>')
-    expect(html).toContain('비정기 별도')
+    expect(html).toContain('예상 지출 <strong>1,500,000원</strong>')
+    expect(html).not.toContain('비정기 별도')
   })
 
   it.each([0, 200000])('비정기 지출이 %i원이어도 한도·잔여·초과·예산 편집을 표시하지 않는다', (amount) => {
@@ -49,8 +49,40 @@ describe('예산 화면 표시', () => {
     state.transactions.push({ type: 'settlement', categoryId: 'medical', amount: 120000, date: '2026-09-03' })
     const html = renderToStaticMarkup(<Passbook />)
     expect(html).toContain('980,000')
+    expect(html).toContain('예상 지출 <strong>1,380,000원</strong>')
     expect(html).toContain('<dt>비정기</dt><dd>80,000')
     expect(html).toContain('잔여 400,000원')
+  })
+
+  it('생활 총액 초과는 상단 생활 칸과 생활 예산 카드에 표시한다', () => {
+    state.transactions[0].amount = 1100000
+    const html = renderToStaticMarkup(<Passbook />)
+    expect(html).toContain('summary-over-budget')
+    expect(html).toContain('100,000원 초과')
+    expect(html).toContain('monthly-budget is-over-budget')
+    expect(html).toContain('110% 사용')
+    expect(html).toContain('예상 지출 <strong>1,600,000원</strong>')
+  })
+
+  it('카테고리만 초과하면 해당 카드에만 경고하고 생활 총액은 경고하지 않는다', () => {
+    const cat = { id: 'food', name: '식비', limit: 500000 }
+    state.livingCategories = [cat, { id: 'other', limit: 500000 }, state.livingCategories[1]]
+    const card = renderToStaticMarkup(<LivingEnvelopeCard cat={cat} catTx={[{ amount: 600000 }]} vKey="2026-09" />)
+    expect(card).toContain('is-over-budget')
+    expect(card).toContain('예산 초과')
+    expect(card).toContain('100,000원')
+    expect(renderToStaticMarkup(<Passbook />)).not.toContain('summary-over-budget')
+  })
+
+  it('예산이 0원인 일반 카테고리도 지출하면 초과로 표시한다', () => {
+    const cat = { id: 'food', name: '식비', limit: 0 }
+    state.livingCategories = [cat, state.livingCategories[1]]
+    const card = renderToStaticMarkup(<LivingEnvelopeCard cat={cat} catTx={[{ amount: 600000 }]} vKey="2026-09" />)
+    expect(card).toContain('예산 초과')
+    expect(card).toContain('width:100%')
+    const html = renderToStaticMarkup(<Passbook />)
+    expect(html).toContain('예산 초과')
+    expect(html).not.toContain('0% 사용')
   })
 })
 

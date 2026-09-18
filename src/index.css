@@ -364,7 +364,12 @@
 .monthly-budget-foot.over-budget { color: var(--over); }
 .monthly-summary-plan { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0 0 18px; font-size: 12px; line-height: 1.6; color: rgba(243,239,228,.8); }
 .monthly-summary-plan strong { font-weight: 600; color: var(--gold-soft); font-variant-numeric: tabular-nums; }
-.monthly-summary-plan-exclusion { font-size: 11px; color: rgba(243,239,228,.7); }
+.monthly-summary-breakdown .summary-over-budget dt,
+.monthly-summary-breakdown .summary-over-budget dd { color: #FFB4A8; }
+.monthly-summary-breakdown dd.summary-overage { font-size: 11px; line-height: 1.5; margin-top: 5px; font-weight: 600; }
+.monthly-budget.is-over-budget, .envelope.is-over-budget { border-color: var(--over); }
+.monthly-budget.is-over-budget .monthly-budget-amount strong,
+.envelope.is-over-budget .env-spent { color: var(--over); }
 .monthly-summary-note { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--ink-soft); }
 .monthly-summary .monthly-summary-note { color: rgba(243,239,228,.75); }
 .monthly-summary-amount, .monthly-summary-breakdown dd, .monthly-budget-amount { font-variant-numeric: tabular-nums; }
