@@ -30,7 +30,8 @@ describe('예산 화면 표시', () => {
     expect(html).toContain('1,100,000')
     expect(html).toContain('<dt>비정기</dt><dd>200,000')
     expect(html).toContain('잔여 400,000원')
-    expect(html).toContain('고정 포함 예정액 1,300,000원')
+    expect(html).toContain('기본 지출 계획 <strong>1,300,000원</strong>')
+    expect(html).toContain('비정기 별도')
   })
 
   it.each([0, 200000])('비정기 지출이 %i원이어도 한도·잔여·초과·예산 편집을 표시하지 않는다', (amount) => {

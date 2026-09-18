@@ -26,6 +26,10 @@ export default function Passbook() {
       <section className="monthly-summary" aria-label="이번 달 실지출">
         <h2>이번 달 실지출</h2>
         <div className="monthly-summary-amount">{fmt(monthlyTotal)}<span>원</span></div>
+        <p className="monthly-summary-plan">
+          <span>기본 지출 계획 <strong>{fmt(totalBudget + fixedTotal)}원</strong></span>
+          <span className="monthly-summary-plan-exclusion">비정기 별도</span>
+        </p>
         <dl className="monthly-summary-breakdown">
           <div><dt>생활</dt><dd>{fmt(totalSpent)}<span>원</span></dd></div>
           <div><dt>비정기</dt><dd>{fmt(unbudgetedSpent)}<span>원</span></dd></div>
@@ -38,13 +42,12 @@ export default function Passbook() {
         <div className="monthly-budget-amount"><strong>{fmt(totalSpent)}</strong><span> / {fmt(totalBudget)}원</span></div>
         {totalSettled !== 0 && <p className="monthly-summary-note">생활 지출 {fmt(rawSpent)}원 − 정산 {fmt(totalSettled)}원</p>}
         <div className="monthly-budget-bar" role="progressbar" aria-label="생활 예산 사용률" aria-valuenow={totalPct} aria-valuemin={0} aria-valuemax={100}>
-          <div style={{ width: `${totalPct}%`, background: remain < 0 ? 'var(--over)' : 'var(--ok)' }} />
+          <div style={{ width: `${totalPct}%`, background: remain < 0 ? 'var(--over)' : 'var(--gold)' }} />
         </div>
         <div className={`monthly-budget-foot${remain < 0 ? ' over-budget' : ''}`}>
           <span>{Math.round(totalBudget ? (totalSpent / totalBudget) * 100 : 0)}% 사용</span>
           <span>{remain >= 0 ? '잔여 ' : '초과 '}{fmt(Math.abs(remain))}원</span>
         </div>
-        <p className="monthly-budget-plan">고정 포함 예정액 {fmt(totalBudget + fixedTotal)}원</p>
       </section>
     </div>
   )
