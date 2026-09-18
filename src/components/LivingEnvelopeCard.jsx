@@ -14,6 +14,7 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
   // 정산: 원거래 금액(spent)은 절대 안 바꾸고, "실질 지출 = 실사용 - 정산액"만 예산 계산에 반영한다
   const settled = settlementsForCategory(transactions, cat.id, vKey)
   const effectiveSpent = spent - settled
+  const budgetEnabled = cat.budgetEnabled !== false
   const budget = budgetAmountForMonth(livingBudgetChanges, cat, vKey)
   const pct = budget ? (effectiveSpent / budget) * 100 : 0
   const barPct = Math.min(100, Math.max(0, pct))
@@ -44,12 +45,12 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
           <span className="env-caret">▾</span>
         </div>
         <div className="env-pct" style={{ color, background: color + '1A' }}>
-          {Math.round(pct)}%
+          {budgetEnabled ? `${Math.round(pct)}%` : '예산 없음'}
         </div>
       </div>
       <div className="env-numbers">
         <span className="env-spent">{fmt(effectiveSpent)}원</span>
-        <span className="env-limit">
+        {budgetEnabled ? <span className="env-limit">
           / {fmt(budget)}원{' '}
           <button
             className="mr-budget-edit"
@@ -59,14 +60,14 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
           >
             ✎
           </button>
-        </span>
+        </span> : <span className="env-limit"> 이번 달 실부담</span>}
       </div>
-      {settled > 0 && (
+      {(!budgetEnabled || settled > 0) && (
         <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
           실사용 {fmt(spent)}원 − 정산 {fmt(settled)}원 = 실질 {fmt(effectiveSpent)}원
         </div>
       )}
-      <div className="env-bar">
+      {budgetEnabled && <><div className="env-bar">
         <div className="env-bar-fill" style={{ width: barPct + '%', background: color }} />
       </div>
       <div className="env-remain">
@@ -80,6 +81,7 @@ export default function LivingEnvelopeCard({ cat, catTx, vKey }) {
           </>
         )}
       </div>
+      </>}
       <div className="env-sub">
         {subEntries.length ? (
           subEntries.map(([name, amt]) => (

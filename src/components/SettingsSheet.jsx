@@ -31,7 +31,7 @@ function LivingRow({ cat, draftApi, onDelete }) {
         <input className="mr-sub" value={draftApi.get(cat, 'subcats_text') ?? (cat.subcats || []).join(', ')} placeholder="콤마로 구분" onChange={(e) => draftApi.update(cat.id, 'subcats_text', e.target.value)} />
       </div>
       <div className="mr-hint" style={{ fontSize: 11, opacity: 0.55, margin: '-4px 0 6px 0' }}>
-        예산 금액은 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요
+        {cat.budgetEnabled === false ? '예산 없이 지출과 정산만 기록해요. 생활 예산 사용률에서는 제외돼요.' : '예산 금액은 예산 화면 카드의 ✎(연필) 아이콘을 눌러 수정하세요'}
       </div>
     </div>
   )

@@ -342,3 +342,25 @@
     .cal-grid{ grid-template-columns:repeat(7,1fr) minmax(56px,0.9fr); }
     .cal-week-total{ font-size:11px; }
   }
+.monthly-overview { display: grid; gap: 12px; margin-bottom: 24px; }
+.monthly-summary, .monthly-budget { padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.72); color: var(--ink); min-width: 0; }
+.monthly-overview h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.monthly-summary h2 { color: var(--ink-soft); }
+.monthly-summary-amount { margin: 10px 0 18px; font-size: clamp(26px, 7.5vw, 38px); font-weight: 750; letter-spacing: -1px; overflow-wrap: anywhere; }
+.monthly-summary-amount span { font-size: .7em; margin-left: 3px; }
+.monthly-summary-breakdown { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; }
+.monthly-summary-breakdown > div { min-width: 0; padding: 0 5px; }
+.monthly-summary-breakdown > div + div { border-left: 1px solid var(--line); }
+.monthly-summary-breakdown dt { font-size: 12px; color: var(--ink-soft); }
+.monthly-summary-breakdown dd { margin: 7px 0 0; font-size: clamp(13px, 3.5vw, 17px); font-weight: 700; overflow-wrap: anywhere; }
+.monthly-summary-breakdown dd span { font-size: .8em; margin-left: 1px; }
+.monthly-budget-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin-top: 12px; font-size: 18px; overflow-wrap: anywhere; }
+.monthly-budget-amount strong { font-size: 28px; letter-spacing: -.7px; }
+.monthly-budget-amount > span { color: var(--ink-soft); }
+.monthly-budget-bar { height: 9px; margin-top: 16px; background: rgba(19,42,51,.09); border-radius: 9px; overflow: hidden; }
+.monthly-budget-bar > div { height: 100%; border-radius: inherit; transition: width .3s; }
+.monthly-budget-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-top: 10px; font-size: 13px; font-weight: 600; color: var(--ok); }
+.monthly-budget-foot.over-budget { color: var(--over); }
+.monthly-budget-plan { padding-top: 12px; margin: 14px 0 0; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-soft); }
+.monthly-summary-note { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--ink-soft); }
+.monthly-summary-amount, .monthly-summary-breakdown dd, .monthly-budget-amount { font-variant-numeric: tabular-nums; }

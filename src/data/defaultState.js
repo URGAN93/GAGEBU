@@ -9,6 +9,7 @@ export const DEFAULT_STATE = {
     { id: 'living', name: '생활비', color: PALETTE[1], limit: 300000, subcats: [] },
     { id: 'transport', name: '교통', color: PALETTE[4], limit: 400000, subcats: [] },
     { id: 'etc', name: '기타', color: PALETTE[5], limit: 100000, subcats: [] },
+    { id: 'unbudgeted', name: '비정기 지출', color: PALETTE[6], limit: 0, budgetEnabled: false, subcats: ['병원·약국', '치과', '수리·교체', '앱·서비스', '기타'] },
   ],
   // 비정기 카테고리 = 누적형 Envelope(Sinking Fund): 매달 monthlyAmount만큼 적립, 안 쓰면 이월
   // scope: 'household'=가계부 구성원 전체 공유(경조사), 'personal'=본인만(개인용돈)

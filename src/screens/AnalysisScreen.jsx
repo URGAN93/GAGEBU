@@ -188,7 +188,7 @@ export default function AnalysisScreen() {
     const budget = budgetAmountForMonth(livingBudgetChanges, filterCat, vKey)
     const pct = budget ? (effectiveSpent / budget) * 100 : 0
     const remain = budget - effectiveSpent
-    catSummary = { effectiveSpent, budget, pct, remain }
+    catSummary = { effectiveSpent, budget, pct, remain, budgetEnabled: filterCat.budgetEnabled !== false, spent: catSpent, settled: catSettled }
   } else if (filterEnv) {
     const credited = creditedForEnvelope(envelopeRateChanges, envelopeBonusCredits, filterEnv, filterEnv.startMonth, vKey)
     const contributions = irregularContributions(transactions, filterEnv.id, filterEnv.startMonth, vKey)
@@ -308,9 +308,10 @@ export default function AnalysisScreen() {
           <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
             <div className="env-numbers">
               <span className="env-spent">{fmt(catSummary.effectiveSpent)}원</span>
-              <span className="env-limit"> / {fmt(catSummary.budget)}원</span>
+              <span className="env-limit">{catSummary.budgetEnabled ? ` / ${fmt(catSummary.budget)}원` : ' 이번 달 실부담 · 예산 없음'}</span>
             </div>
-            <div className="env-bar">
+            {!catSummary.budgetEnabled && <div style={{ fontSize: 12, marginTop: 6, opacity: 0.7 }}>지출 {fmt(catSummary.spent)}원 − 정산 {fmt(catSummary.settled)}원</div>}
+            {catSummary.budgetEnabled && <><div className="env-bar">
               <div className="env-bar-fill" style={{ width: Math.min(100, Math.max(0, catSummary.pct)) + '%', background: statusColor(catSummary.pct) }} />
             </div>
             <div className="env-remain" style={{ marginTop: 4 }}>
@@ -324,6 +325,7 @@ export default function AnalysisScreen() {
                 </>
               )}
             </div>
+            </>}
           </div>
         )}
 

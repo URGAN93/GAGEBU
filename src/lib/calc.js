@@ -131,7 +131,29 @@ function latestRateChange(changes, matchKey, matchValue, yearMonth, fallback) {
 
 // 생활 카테고리의 특정 달 예산: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 cat.limit(기본값)
 export function budgetAmountForMonth(livingBudgetChanges, cat, yearMonth) {
+  if (cat.budgetEnabled === false) return 0
   return latestRateChange(livingBudgetChanges, 'categoryId', cat.id, yearMonth, cat.limit)
+}
+
+// 예산 없는 생활 지출과 그 정산은 예산 사용률에 섞지 않는다.
+// 누적 카테고리는 기존처럼 월 충전액/해당 월 지출을 생활 예산에 포함한다.
+export function monthlyBudgetSummary({ transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges }, vKey) {
+  const monthTx = expandMonthTx(transactions, vKey)
+  const unbudgetedIds = new Set(livingCategories.filter((c) => c.budgetEnabled === false).map((c) => c.id))
+  const sum = (predicate) => monthTx.filter(predicate).reduce((total, t) => total + t.amount, 0)
+  const isExpense = (t) => t.type === 'living' || t.type === 'irregular'
+  const unbudgetedRaw = sum((t) => t.type === 'living' && unbudgetedIds.has(t.categoryId))
+  const unbudgetedSettled = sum((t) => t.type === 'settlement' && unbudgetedIds.has(t.categoryId))
+  const rawSpent = sum(isExpense) - unbudgetedRaw
+  const totalSettled = sum((t) => t.type === 'settlement') - unbudgetedSettled
+  const totalSpent = rawSpent - totalSettled
+  const unbudgetedSpent = unbudgetedRaw - unbudgetedSettled
+  const totalBudget = livingCategories.reduce((total, c) => total + budgetAmountForMonth(livingBudgetChanges, c, vKey), 0)
+    + irregularEnvelopes.reduce((total, e) => total + monthlyAmountForMonth(envelopeRateChanges, e, vKey), 0)
+  const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((total, f) => total + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
+  return { totalSpent, totalBudget, totalSettled, rawSpent, fixedTotal, unbudgetedRaw, unbudgetedSettled, unbudgetedSpent,
+    monthlyTotal: totalSpent + unbudgetedSpent + fixedTotal,
+    totalPct: totalBudget ? Math.max(0, Math.min(100, totalSpent / totalBudget * 100)) : 0 }
 }
 
 // 누적 카테고리의 특정 달 충전액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 env.monthlyAmount(기본값)

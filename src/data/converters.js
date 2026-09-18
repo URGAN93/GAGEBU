@@ -9,6 +9,7 @@ export function rowToLivingCat(r) {
     name: r.name,
     color: r.color,
     limit: r.default_amount != null ? r.default_amount : r.limit_amount,
+    budgetEnabled: r.budget_enabled !== false,
     subcats: r.subcats || [],
     householdId: r.household_id || null,
   }
@@ -21,6 +22,7 @@ export function livingCatToRow(c, idx, household) {
     color: c.color,
     default_amount: c.limit,
     limit_amount: c.limit,
+    budget_enabled: c.budgetEnabled !== false,
     subcats: c.subcats || [],
     sort_order: idx,
   }

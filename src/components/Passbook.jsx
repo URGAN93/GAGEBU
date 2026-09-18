@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
-import { fmt, monthKey, expandMonthTx, budgetAmountForMonth, monthlyAmountForMonth, activeFixedExpenses, fixedAmountForMonth } from '../lib/calc.js'
+import { fmt, monthKey, monthlyBudgetSummary } from '../lib/calc.js'
 
 export default function Passbook() {
   const viewDate = useAppStore((s) => s.viewDate)
@@ -14,47 +14,38 @@ export default function Passbook() {
 
   const vKey = monthKey(viewDate)
 
-  const { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct } = useMemo(() => {
-    const monthTx = expandMonthTx(transactions, vKey)
-    const livingTx = monthTx.filter((t) => t.type === 'living')
-    const irregularTxThisMonth = monthTx.filter((t) => t.type === 'irregular')
-    const totalBudget =
-      livingCategories.reduce((s, c) => s + budgetAmountForMonth(livingBudgetChanges, c, vKey), 0) +
-      irregularEnvelopes.reduce((s, e) => s + monthlyAmountForMonth(envelopeRateChanges, e, vKey), 0)
-    const totalSettled = monthTx.filter((t) => t.type === 'settlement').reduce((s, t) => s + t.amount, 0)
-    const rawSpent = livingTx.reduce((s, t) => s + t.amount, 0) + irregularTxThisMonth.reduce((s, t) => s + t.amount, 0)
-    const totalSpent = rawSpent - totalSettled
-    const totalPct = totalBudget ? Math.min(100, (totalSpent / totalBudget) * 100) : 0
-    const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
-    return { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct }
-  }, [transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges, vKey])
+  const { totalSpent, totalBudget, fixedTotal, totalSettled, rawSpent, totalPct, unbudgetedRaw, unbudgetedSettled, unbudgetedSpent, monthlyTotal } = useMemo(
+    () => monthlyBudgetSummary({ transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges }, vKey),
+    [transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges, vKey],
+  )
 
   const remain = totalBudget - totalSpent
 
   return (
-    <div className="passbook">
-      <div className="eyebrow">이번 달 생활 예산</div>
-      <div className="total-row">
-        <span className="total-amt">{fmt(totalSpent)}</span>
-        <span className="total-of">
-          원 / <span>{fmt(totalBudget)}</span>원 <span className="total-combined">({fmt(totalBudget + fixedTotal)})</span>
-        </span>
-      </div>
-      {totalSettled > 0 && (
-        <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
-          실사용 {fmt(rawSpent)}원 − 정산 {fmt(totalSettled)}원 = 실질 {fmt(totalSpent)}원
+    <div className="monthly-overview">
+      <section className="monthly-summary" aria-label="이번 달 실지출">
+        <h2>이번 달 실지출</h2>
+        <div className="monthly-summary-amount">{fmt(monthlyTotal)}<span>원</span></div>
+        <dl className="monthly-summary-breakdown">
+          <div><dt>생활</dt><dd>{fmt(totalSpent)}<span>원</span></dd></div>
+          <div><dt>비정기</dt><dd>{fmt(unbudgetedSpent)}<span>원</span></dd></div>
+          <div><dt>고정</dt><dd>{fmt(fixedTotal)}<span>원</span></dd></div>
+        </dl>
+        {unbudgetedSettled !== 0 && <p className="monthly-summary-note">비정기 지출 {fmt(unbudgetedRaw)}원 − 정산 {fmt(unbudgetedSettled)}원</p>}
+      </section>
+      <section className="monthly-budget" aria-label="생활 예산">
+        <h2>생활 예산</h2>
+        <div className="monthly-budget-amount"><strong>{fmt(totalSpent)}</strong><span> / {fmt(totalBudget)}원</span></div>
+        {totalSettled !== 0 && <p className="monthly-summary-note">생활 지출 {fmt(rawSpent)}원 − 정산 {fmt(totalSettled)}원</p>}
+        <div className="monthly-budget-bar" role="progressbar" aria-label="생활 예산 사용률" aria-valuenow={totalPct} aria-valuemin={0} aria-valuemax={100}>
+          <div style={{ width: `${totalPct}%`, background: remain < 0 ? 'var(--over)' : 'var(--ok)' }} />
         </div>
-      )}
-      <div className="total-bar">
-        <div className="total-bar-fill" style={{ width: totalPct + '%' }} />
-      </div>
-      <div className="total-foot">
-        <span>{Math.round(totalBudget ? (totalSpent / totalBudget) * 100 : 0)}% 사용</span>
-        <span>
-          {remain >= 0 ? '잔여 ' : '초과 '}
-          {fmt(Math.abs(remain))}원
-        </span>
-      </div>
+        <div className={`monthly-budget-foot${remain < 0 ? ' over-budget' : ''}`}>
+          <span>{Math.round(totalBudget ? (totalSpent / totalBudget) * 100 : 0)}% 사용</span>
+          <span>{remain >= 0 ? '잔여 ' : '초과 '}{fmt(Math.abs(remain))}원</span>
+        </div>
+        <p className="monthly-budget-plan">고정 포함 예정액 {fmt(totalBudget + fixedTotal)}원</p>
+      </section>
     </div>
   )
 }
