@@ -485,17 +485,24 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  startupInProgress: false,
+  startupError: null,
   async bootstrap() {
-    if (get().authStatus !== 'loading' && get().authStatus !== 'signed-out') return
-    set({ authStatus: 'loading' })
-    await migratePersonalAllowance()
-    const hhInfo = await resolveHousehold()
-    if (hhInfo.v3Available && !hhInfo.household) {
-      // SQL v3까지 적용됐는데 아직 소속 가계부가 없는 사용자 (예: 새로 가입한 배우자) → 설정 화면 표시
-      set({ authStatus: 'needs-household', myUserId: hhInfo.myUserId })
-      return
+    if (get().startupInProgress || (get().authStatus !== 'loading' && get().authStatus !== 'signed-out')) return
+    set({ authStatus: 'loading', startupInProgress: true, startupError: null })
+    try {
+      const [, hhInfo] = await Promise.all([migratePersonalAllowance(), resolveHousehold()])
+      if (hhInfo.v3Available && !hhInfo.household) {
+        // SQL v3까지 적용됐는데 아직 소속 가계부가 없는 사용자 → 설정 화면 표시
+        set({ authStatus: 'needs-household', myUserId: hhInfo.myUserId })
+        return
+      }
+      await get().finishStartup(hhInfo)
+    } catch {
+      set({ startupError: '가계부를 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.' })
+    } finally {
+      set({ startupInProgress: false })
     }
-    await get().finishStartup(hhInfo)
   },
 
   async finishStartup(hhInfo) {

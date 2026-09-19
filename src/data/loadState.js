@@ -77,7 +77,25 @@ export async function resolveHousehold() {
 }
 
 export async function loadState(household, myUserId, members) {
-  let results = await fetchAllTables()
+  // 서로 의존하지 않는 조회는 한 번에 시작한다. 선택 테이블의 실패는
+  // 기존처럼 각 처리부에서 격리하고, 신규 계정의 씨딩만 조회 뒤에 수행한다.
+  const [core, ...optional] = await Promise.allSettled([
+    fetchAllTables(),
+    sb.from('living_budget_changes').select('*'),
+    sb.from('envelope_rate_changes').select('*'),
+    sb.from('fixed_expense_rate_changes').select('*'),
+    sb.from('envelope_bonus_credits').select('*'),
+    sb.from('income_categories').select('*').order('sort_order'),
+    sb.from('asset_categories').select('*').order('sort_order'),
+    sb.from('asset_entries').select('*').order('created_at', { ascending: false }),
+    sb.from('notification_settings').select('*').limit(1),
+    sb.from('push_subscriptions').select('id').limit(1),
+    loadHouseholdAllocations(household),
+  ])
+  if (core.status === 'rejected') throw core.reason
+  const read = (index) => optional[index].status === 'fulfilled'
+    ? optional[index].value : { data: null, error: optional[index].reason }
+  let results = core.value
   let [
     { data: livingRows, error: e1 },
     { data: irrRows, error: e2 },
@@ -142,7 +160,7 @@ export async function loadState(household, myUserId, members) {
   // living_budget_changes는 SQL 마이그레이션(v5)을 아직 안 돌렸으면 테이블 자체가 없을 수 있어서 별도로, 실패해도 나머지 상태는 그대로 살린다
   let livingBudgetChanges = []
   try {
-    const { data: budgetRows, error: eBudget } = await sb.from('living_budget_changes').select('*')
+    const { data: budgetRows, error: eBudget } = read(0)
     if (eBudget) throw eBudget
     livingBudgetChanges = (budgetRows || []).map(rowToBudgetChange)
   } catch (err) {
@@ -152,7 +170,7 @@ export async function loadState(household, myUserId, members) {
   // envelope_rate_changes도 마찬가지로 SQL 마이그레이션(STEP 4) 전이면 테이블이 없을 수 있어 별도 처리
   let envelopeRateChanges = []
   try {
-    const { data: rateRows, error: eRate } = await sb.from('envelope_rate_changes').select('*')
+    const { data: rateRows, error: eRate } = read(1)
     if (eRate) throw eRate
     envelopeRateChanges = (rateRows || []).map(rowToRateChange)
   } catch (err) {
@@ -162,7 +180,7 @@ export async function loadState(household, myUserId, members) {
   // fixed_expense_rate_changes도 SQL 마이그레이션(v8) 전이면 테이블이 없을 수 있어 별도 처리
   let fixedRateChanges = []
   try {
-    const { data: fixedRateRows, error: eFixedRate } = await sb.from('fixed_expense_rate_changes').select('*')
+    const { data: fixedRateRows, error: eFixedRate } = read(2)
     if (eFixedRate) throw eFixedRate
     fixedRateChanges = (fixedRateRows || []).map(rowToFixedRateChange)
   } catch (err) {
@@ -172,7 +190,7 @@ export async function loadState(household, myUserId, members) {
   // envelope_bonus_credits (SQL v3)
   let envelopeBonusCredits = []
   try {
-    const { data: bonusRows, error: eBonus } = await sb.from('envelope_bonus_credits').select('*')
+    const { data: bonusRows, error: eBonus } = read(3)
     if (eBonus) throw eBonus
     envelopeBonusCredits = (bonusRows || []).map(rowToBonusCredit)
   } catch (err) {
@@ -183,7 +201,7 @@ export async function loadState(household, myUserId, members) {
   // (신규 계정이거나 household에 새로 가입한 경우) 기본값(정기수입/추가수입)을 개인 소유로 씨딩한다.
   let incomeCategories = []
   try {
-    const { data: incomeRows, error: eIncome } = await sb.from('income_categories').select('*').order('sort_order')
+    const { data: incomeRows, error: eIncome } = read(4)
     if (eIncome) throw eIncome
     if (!incomeRows || !incomeRows.length) {
       await sb.from('income_categories').insert(
@@ -205,7 +223,7 @@ export async function loadState(household, myUserId, members) {
   let assetCategories = []
   let assetEntries = []
   try {
-    const { data: catRows, error: eCat } = await sb.from('asset_categories').select('*').order('sort_order')
+    const { data: catRows, error: eCat } = read(5)
     if (eCat) throw eCat
     if ((!catRows || !catRows.length) && household) {
       await sb
@@ -216,7 +234,7 @@ export async function loadState(household, myUserId, members) {
     } else {
       assetCategories = (catRows || []).map(rowToAssetCategory)
     }
-    const { data: entryRows, error: eEntry } = await sb.from('asset_entries').select('*').order('created_at', { ascending: false })
+    const { data: entryRows, error: eEntry } = read(6)
     if (eEntry) throw eEntry
     assetEntries = (entryRows || []).map(rowToAssetEntry)
   } catch (err) {
@@ -227,10 +245,8 @@ export async function loadState(household, myUserId, members) {
   let notificationSettings = structuredClone(DEFAULT_STATE.notificationSettings)
   let pushSubscribed = false
   try {
-    const [{ data: notifRows, error: eNotif }, { data: subRows, error: eSub }] = await Promise.all([
-      sb.from('notification_settings').select('*').limit(1),
-      sb.from('push_subscriptions').select('id').limit(1),
-    ])
+    const { data: notifRows, error: eNotif } = read(7)
+    const { data: subRows, error: eSub } = read(8)
     if (eNotif) throw eNotif
     if (notifRows && notifRows.length) notificationSettings = rowToNotifSettings(notifRows[0])
     if (!eSub) pushSubscribed = !!(subRows && subRows.length)
@@ -240,7 +256,10 @@ export async function loadState(household, myUserId, members) {
 
   return {
     livingCategories: livingRows.length ? livingRows.map(rowToLivingCat) : structuredClone(DEFAULT_STATE.livingCategories),
-    ...await loadHouseholdAllocations(household),
+    // 새 누적 카테고리를 만든 경우에만 충전액을 다시 조회한다.
+    ...(!livingRows.length && !irrRows.length ? await loadHouseholdAllocations(household)
+      : optional[9].status === 'fulfilled' ? optional[9].value
+        : { householdAllocations: [], allocationsError: '공동 월 충전액을 불러오지 못했어요. 다시 시도해주세요.' }),
     irregularEnvelopes: irrRows.length ? irrRows.map(rowToIrregular) : structuredClone(DEFAULT_STATE.irregularEnvelopes),
     transactions: txRows.map(rowToTx),
     fixedExpenses: fixedRows.map(rowToFixed),

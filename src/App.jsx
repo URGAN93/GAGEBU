@@ -19,6 +19,7 @@ function App() {
   const checkSession = useAppStore((s) => s.checkSession)
   const bootstrap = useAppStore((s) => s.bootstrap)
   const activeCol = useAppStore((s) => s.activeCol)
+  const startupError = useAppStore((s) => s.startupError)
 
   useEffect(() => {
     if (authStatus !== 'ready') return
@@ -56,7 +57,10 @@ function App() {
   return (
     <>
       <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>
-      {authStatus === 'loading' && null}
+      {authStatus === 'loading' && <div role="status" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+        <p>{startupError || '가계부를 불러오고 있어요…'}</p>
+        {startupError && <button onClick={bootstrap}>다시 불러오기</button>}
+      </div>}
       {authStatus === 'signed-out' && <AuthScreen />}
       {authStatus === 'needs-household' && <HouseholdSetupScreen />}
       {authStatus === 'ready' && (
