@@ -57,7 +57,7 @@ function App() {
   return (
     <>
       <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>
-      {authStatus === 'loading' && <div role="status" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+      {authStatus === 'loading' && <div role="status" style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', color: 'var(--ink-soft)' }}>
         <p>{startupError || '가계부를 불러오고 있어요…'}</p>
         {startupError && <button onClick={bootstrap}>다시 불러오기</button>}
       </div>}
