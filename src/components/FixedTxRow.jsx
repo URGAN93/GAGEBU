@@ -29,7 +29,7 @@ export default function FixedTxRow({ f, vKey }) {
             </span>
           ) : null}
         </span>
-        <span className="tx-meta">고정지출{f.payMethod ? ` · ${f.payMethod}` : ''}</span>
+        <span className="tx-meta">{f.isEnvelopeAllocation ? '누적 카테고리 · 월 충전' : '고정지출'}{f.payMethod ? ` · ${f.payMethod}` : ''}</span>
       </div>
       <span className="tx-amt" style={{ color: 'var(--gold)', fontWeight: 700 }}>
         -{fmt(amount)}원

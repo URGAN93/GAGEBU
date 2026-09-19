@@ -44,7 +44,7 @@ describe('예산 없는 생활 지출', () => {
       irregularEnvelopes: [{ id: 'allowance', monthlyAmount: 50000 }],
       fixedExpenses: [{ id: 'rent', amount: 400000 }, { id: 'future', amount: 900000, startMonth: '2026-10' }],
     }, '2026-09')
-    expect(result).toMatchObject({ totalBudget: 1050000, totalSpent: 0, unbudgetedSpent: 100000, fixedTotal: 400000, monthlyTotal: 500000 })
+    expect(result).toMatchObject({ totalBudget: 1000000, totalSpent: 0, unbudgetedSpent: 100000, fixedTotal: 400000, monthlyTotal: 500000 })
   })
 
   it('예산 0원과 예산 없음을 구분하고 이전 예산 변경 이력도 제외한다', () => {

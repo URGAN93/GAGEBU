@@ -19,6 +19,7 @@ export default function IrregularEnvelopeCard({ env, vKey }) {
   // 누적 적립액 = start_month부터 조회월까지, 각 달 시점에 유효했던 충전액을 합산 (rate 변경 이력 반영)
   const credited = creditedForEnvelope(envelopeRateChanges, envelopeBonusCredits, env, env.startMonth, vKey)
   const thisMonthRate = monthlyAmountForMonth(envelopeRateChanges, env, vKey)
+  const thisMonthBonus = envelopeBonusCredits.filter((b) => b.envelopeId === env.id && b.month === vKey).reduce((sum, b) => sum + b.amount, 0)
   // 잔액 = 이월분 포함 누적 적립액 - 해당 Envelope에 귀속된 실제 지출액 (다른 카테고리 보정에 쓰이지 않음)
   const contributions = irregularContributions(transactions, env.id, env.startMonth, vKey)
   const spentAll = contributions.reduce((s, r) => s + r.amount, 0)
@@ -71,6 +72,8 @@ export default function IrregularEnvelopeCard({ env, vKey }) {
         </span>
         <span>이번 달 사용 {fmt(settledThisMonth > 0 ? spentThisMonth - settledThisMonth : spentThisMonth)}원</span>
       </div>
+      <div className="monthly-summary-note">월 충전액은 공동 고정지출에 반영 · 추가 적립은 잔액에만 반영</div>
+      {thisMonthBonus > 0 && <div className="monthly-summary-note">이번 달 추가 적립 +{fmt(thisMonthBonus)}원 · 고정지출 제외</div>}
       {settledThisMonth > 0 && (
         <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
           실사용 {fmt(spentThisMonth)}원 − 정산 {fmt(settledThisMonth)}원

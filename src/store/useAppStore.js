@@ -17,6 +17,7 @@ import {
 } from '../data/converters.js'
 import { todayKST, monthKey } from '../lib/calc.js'
 import { findCatPool } from '../lib/selectors.js'
+import { loadFinancialState } from '../data/financialState.js'
 import { VAPID_PUBLIC_KEY } from '../data/supabaseClient.js'
 import { urlBase64ToUint8Array, registerServiceWorker } from '../lib/push.js'
 
@@ -34,6 +35,7 @@ async function upsertRateChange(get, set, { list, listKey, table, toRow, idPrefi
   }
   set({ [listKey]: existing ? list.map((r) => (r === existing ? row : r)) : [...list, row] })
   get().showToast(successMsg)
+  await get().refreshFinancialState()
 }
 
 // viewDate(지금 보고 있는 달)는 캘린더/예산/분석 탭이 전부 공유하는 값이라 스토어에 둔다.
@@ -48,6 +50,8 @@ function initialViewDate() {
 // 화면을 보여줄지 App.jsx가 결정한다.
 
 const initialData = {
+  householdAllocations: [],
+  allocationsError: null,
   livingCategories: [],
   irregularEnvelopes: [],
   transactions: [],
@@ -68,6 +72,23 @@ const initialData = {
 }
 
 export const useAppStore = create((set, get) => ({
+  financialRefreshId: 0,
+  async refreshFinancialState() {
+    const before = get()
+    if (before.authStatus !== 'ready' || before.settingsSheetOpen || before.txSheetOpen) return
+    const requestId = before.financialRefreshId + 1
+    set({ financialRefreshId: requestId })
+    try {
+      const loaded = await loadFinancialState(before.household)
+      const current = get()
+      if (current.financialRefreshId !== requestId || current.authStatus !== 'ready' || current.household !== before.household || current.settingsSheetOpen || current.txSheetOpen) return
+      // 읽는 동안 저장한 새 값을 오래된 응답으로 덮어쓰지 않는다.
+      if (Object.keys(loaded).some((key) => current[key] !== before[key])) return
+      set(loaded)
+    } catch {
+      if (get().financialRefreshId === requestId) set({ allocationsError: '최신 공동 예산을 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.' })
+    }
+  },
   authStatus: 'loading', // 'loading' | 'signed-out' | 'needs-household' | 'ready'
   toast: null,
   nextColorIdx: 0,
@@ -292,6 +313,7 @@ export const useAppStore = create((set, get) => ({
       return { ok: false }
     }
     set((s) => ({ irregularEnvelopes: s.irregularEnvelopes.filter((c) => c.id !== id) }))
+    await get().refreshFinancialState()
     return { ok: true }
   },
   async deleteFixedExpense(id) {
@@ -371,6 +393,7 @@ export const useAppStore = create((set, get) => ({
     }
     set({ livingCategories, irregularEnvelopes, fixedExpenses, payMethods, incomeCategories, settingsSheetOpen: false })
     get().showToast('카테고리 설정을 저장했어요')
+    await get().refreshFinancialState()
     return { ok: true }
   },
 

@@ -18,6 +18,7 @@ import { statusColor } from '../lib/theme.js'
 import TxRow from '../components/TxRow.jsx'
 import FixedTxRow from '../components/FixedTxRow.jsx'
 import Pager from '../components/Pager.jsx'
+import { useEnvelopeFixedExpenses } from '../hooks/useEnvelopeFixedExpenses.js'
 
 const PAGE_SIZE = 10
 const VIEW_TABS = [
@@ -47,6 +48,8 @@ export default function AnalysisScreen() {
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
   const vKey = monthKey(viewDate)
+  const envelopeFixed = useEnvelopeFixedExpenses(vKey)
+  const allocationsError = useAppStore((s) => s.allocationsError)
   const monthTx = useMemo(() => expandMonthTx(transactions, vKey), [transactions, vKey])
   const activeFixed = useMemo(() => activeFixedExpenses(fixedExpenses, vKey), [fixedExpenses, vKey])
 
@@ -115,10 +118,11 @@ export default function AnalysisScreen() {
     if (currentView !== 'expense') setCurrentCatFilter('')
   }, [currentView])
 
-  const fixedTotal = activeFixed.reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
+  const fixedTotal = activeFixed.reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0) + envelopeFixed.reduce((s, f) => s + f.amount, 0)
+  const envelopeIds = new Set(irregularEnvelopes.map((e) => e.id))
   const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-  const settled = monthTx.filter((t) => t.type === 'settlement').reduce((s, t) => s + t.amount, 0)
-  const rawExpense = monthTx.filter((t) => t.type === 'living' || t.type === 'irregular').reduce((s, t) => s + t.amount, 0) + fixedTotal
+  const settled = monthTx.filter((t) => t.type === 'settlement' && !envelopeIds.has(t.categoryId)).reduce((s, t) => s + t.amount, 0)
+  const rawExpense = monthTx.filter((t) => t.type === 'living').reduce((s, t) => s + t.amount, 0) + fixedTotal
   const expense = rawExpense - settled
 
   // ── 지출/수입/정산/합계 리스트 ──
@@ -132,8 +136,10 @@ export default function AnalysisScreen() {
           : monthTx
   if (currentView === 'expense' && currentCatFilter) {
     filteredTx = filteredTx.filter((t) => t.categoryId === currentCatFilter)
+  } else if (currentView === 'expense' || currentView === 'all' || currentView === 'settlement') {
+    filteredTx = filteredTx.filter((t) => t.type !== 'irregular' && !(t.type === 'settlement' && envelopeIds.has(t.categoryId)))
   }
-  const fixedRows = !currentCatFilter && (currentView === 'expense' || currentView === 'all') ? activeFixed : []
+  const fixedRows = !currentCatFilter && (currentView === 'expense' || currentView === 'all') ? [...activeFixed, ...envelopeFixed] : []
   const sorted = sortTx(filteredTx, currentSort)
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const clampedTxPage = Math.min(Math.max(txPage, 0), totalPages - 1)
@@ -221,7 +227,7 @@ export default function AnalysisScreen() {
           <div className="passbook">
             <div className="eyebrow">이번 달 분석</div>
             <div className="total-row">
-              <span className="total-amt">{fmt(income - expense)}</span>
+              <span className="total-amt">{allocationsError ? '확인 필요' : fmt(income - expense)}</span>
               <span className="total-of">원 순합계 (수입 − 지출)</span>
             </div>
           </div>
@@ -232,7 +238,7 @@ export default function AnalysisScreen() {
             </div>
             <div className="tx-item">
               <span className="tx-merchant">총 지출</span>
-              <span className="tx-amt">{fmt(expense)}원</span>
+              <span className="tx-amt">{allocationsError ? '공동 합계 확인 필요' : `${fmt(expense)}원`}</span>
             </div>
             {settled > 0 && (
               <div className="tx-item">
@@ -241,7 +247,7 @@ export default function AnalysisScreen() {
               </div>
             )}
           </div>
-          {settled > 0 && (
+          {settled > 0 && !allocationsError && (
             <div style={{ fontSize: 11, opacity: 0.6, margin: '-8px 0 0 4px' }}>
               실지출 {fmt(rawExpense)}원 − 정산 {fmt(settled)}원 = 실질 지출 {fmt(expense)}원
             </div>
@@ -249,6 +255,8 @@ export default function AnalysisScreen() {
         </div>
         {!revealed && <div id="analysisBlurHint">탭하면 금액이 보여요</div>}
       </div>
+
+      <p className="monthly-summary-note">가계 지출에는 누적 카테고리의 월 충전액을 반영해요. 개인 사용 내역은 카테고리·결제수단별로 확인할 수 있어요.</p>
 
       <div className="recent">
         <div className="view-tabs">

@@ -1,5 +1,6 @@
 import { sb } from './supabaseClient.js'
 import { DEFAULT_STATE } from './defaultState.js'
+import { loadHouseholdAllocations } from './financialState.js'
 import {
   rowToLivingCat,
   livingCatToRow,
@@ -239,6 +240,7 @@ export async function loadState(household, myUserId, members) {
 
   return {
     livingCategories: livingRows.length ? livingRows.map(rowToLivingCat) : structuredClone(DEFAULT_STATE.livingCategories),
+    ...await loadHouseholdAllocations(household),
     irregularEnvelopes: irrRows.length ? irrRows.map(rowToIrregular) : structuredClone(DEFAULT_STATE.irregularEnvelopes),
     transactions: txRows.map(rowToTx),
     fixedExpenses: fixedRows.map(rowToFixed),

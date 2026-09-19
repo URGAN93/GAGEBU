@@ -21,6 +21,23 @@ function App() {
   const activeCol = useAppStore((s) => s.activeCol)
 
   useEffect(() => {
+    if (authStatus !== 'ready') return
+    const refresh = () => {
+      if (document.visibilityState === 'visible') useAppStore.getState().refreshFinancialState()
+    }
+    window.addEventListener('focus', refresh)
+    window.addEventListener('online', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    const timer = setInterval(refresh, 30000)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('online', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+      clearInterval(timer)
+    }
+  }, [authStatus])
+
+  useEffect(() => {
     checkSession()
     const { data: sub } = sb.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') bootstrap()

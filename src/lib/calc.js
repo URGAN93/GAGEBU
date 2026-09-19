@@ -136,25 +136,37 @@ export function budgetAmountForMonth(livingBudgetChanges, cat, yearMonth) {
 }
 
 // 예산 없는 생활 지출과 그 정산은 예산 사용률에 섞지 않는다.
-// 누적 카테고리는 기존처럼 월 충전액/해당 월 지출을 생활 예산에 포함한다.
-export function monthlyBudgetSummary({ transactions, livingCategories, irregularEnvelopes, livingBudgetChanges, envelopeRateChanges, fixedExpenses, fixedRateChanges }, vKey) {
+// 누적 카테고리는 정기 충전액만 고정에 반영하고 사용/정산은 개인 잔액에서 관리한다.
+export function monthlyBudgetSummary({ transactions, livingCategories, irregularEnvelopes = [], livingBudgetChanges, fixedExpenses, fixedRateChanges, envelopeFixed = [] }, vKey) {
   const monthTx = expandMonthTx(transactions, vKey)
   const unbudgetedIds = new Set(livingCategories.filter((c) => c.budgetEnabled === false).map((c) => c.id))
   const sum = (predicate) => monthTx.filter(predicate).reduce((total, t) => total + t.amount, 0)
-  const isExpense = (t) => t.type === 'living' || t.type === 'irregular'
+  const envelopeIds = new Set(irregularEnvelopes.map((e) => e.id))
+  const isExpense = (t) => t.type === 'living'
   const unbudgetedRaw = sum((t) => t.type === 'living' && unbudgetedIds.has(t.categoryId))
   const unbudgetedSettled = sum((t) => t.type === 'settlement' && unbudgetedIds.has(t.categoryId))
   const rawSpent = sum(isExpense) - unbudgetedRaw
-  const totalSettled = sum((t) => t.type === 'settlement') - unbudgetedSettled
+  const totalSettled = sum((t) => t.type === 'settlement' && !envelopeIds.has(t.categoryId)) - unbudgetedSettled
   const totalSpent = rawSpent - totalSettled
   const unbudgetedSpent = unbudgetedRaw - unbudgetedSettled
   const totalBudget = livingCategories.reduce((total, c) => total + budgetAmountForMonth(livingBudgetChanges, c, vKey), 0)
-    + irregularEnvelopes.reduce((total, e) => total + monthlyAmountForMonth(envelopeRateChanges, e, vKey), 0)
   const fixedTotal = activeFixedExpenses(fixedExpenses, vKey).reduce((total, f) => total + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
+    + envelopeFixed.reduce((total, f) => total + f.amount, 0)
   return { totalSpent, totalBudget, totalSettled, rawSpent, fixedTotal, unbudgetedRaw, unbudgetedSettled, unbudgetedSpent,
     monthlyTotal: totalSpent + unbudgetedSpent + fixedTotal,
     expectedTotal: Math.max(totalBudget, totalSpent) + unbudgetedSpent + fixedTotal,
     totalPct: totalBudget ? Math.max(0, Math.min(100, totalSpent / totalBudget * 100)) : totalSpent > 0 ? 100 : 0 }
+}
+
+// RPC는 두 계정의 월 충전 설정만 반환한다. 추가 적립은 이 경로에 들어오지 않는다.
+export function envelopeFixedExpenses({ household, householdAllocations = [], irregularEnvelopes = [], envelopeRateChanges = [], myUserId }, vKey) {
+  const allocations = household ? householdAllocations : irregularEnvelopes.map((e) => ({ ...e, rateChanges: envelopeRateChanges }))
+  return allocations.filter((e) => !e.startMonth || e.startMonth <= vKey).map((e) => ({
+    id: `envelope:${e.id}`, envelopeId: e.id,
+    name: `${e.scope === 'household' ? '공동' : e.userId === myUserId || !household ? '나' : '배우자'} · ${e.name}`,
+    amount: monthlyAmountForMonth(e.rateChanges || [], e, vKey),
+    isEnvelopeAllocation: true,
+  }))
 }
 
 // 누적 카테고리의 특정 달 충전액: 그 달 시점에 유효한 가장 최근 "이 달부터" 변경분이 있으면 그 값, 없으면 env.monthlyAmount(기본값)

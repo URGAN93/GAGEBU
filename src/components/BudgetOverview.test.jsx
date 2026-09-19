@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { rowToLivingCat } from '../data/converters.js'
 import Passbook from './Passbook.jsx'
 import LivingEnvelopeCard from './LivingEnvelopeCard.jsx'
+import BudgetScreen from '../screens/BudgetScreen.jsx'
+import IrregularEnvelopeCard from './IrregularEnvelopeCard.jsx'
 
 const { state } = vi.hoisted(() => ({ state: {} }))
 vi.mock('../store/useAppStore.js', () => ({ useAppStore: (selector) => selector(state) }))
@@ -15,6 +17,7 @@ beforeEach(() => {
     livingCategories: [{ id: 'food', name: '식비', limit: 1000000 },
       rowToLivingCat({ id: 'medical', name: '비정기 지출', default_amount: 0, budget_enabled: false, color: '#708090' })],
     irregularEnvelopes: [], livingBudgetChanges: [], envelopeRateChanges: [], fixedRateChanges: [],
+    household: null, householdAllocations: [], allocationsError: null,
     fixedExpenses: [{ id: 'fixed', amount: 300000 }],
     transactions: [
       { type: 'living', categoryId: 'food', amount: 600000, date: '2026-09-01' },
@@ -24,9 +27,42 @@ beforeEach(() => {
 })
 
 describe('예산 화면 표시', () => {
+  it('기존 고정지출과 두 사람 월 충전액을 함께 표시한다', () => {
+    state.household = { id: 'home' }
+    state.myUserId = 'me'
+    state.householdAllocations = [
+      { id: 'a', userId: 'me', name: '용돈', monthlyAmount: 300000 },
+      { id: 'b', userId: 'me', name: '경조사', monthlyAmount: 200000 },
+      { id: 'c', userId: 'wife', name: '용돈', monthlyAmount: 500000 },
+      { id: 'd', userId: 'wife', name: '경조사', monthlyAmount: 200000 },
+    ]
+    const html = renderToStaticMarkup(<BudgetScreen />)
+    expect(html).toContain('합계 1,500,000원')
+    expect(html).toContain('나 · 용돈')
+    expect(html).toContain('배우자 · 경조사')
+    expect(html).toContain('<dt>고정</dt><dd>1,500,000')
+    expect(html).toContain('잔여 400,000원')
+  })
+
+  it('추가 적립은 월 충전액을 바꾸지 않고 누적 잔액에만 보인다', () => {
+    state.envelopeBonusCredits = [{ envelopeId: 'a', month: '2026-09', amount: 100000 }]
+    const html = renderToStaticMarkup(<IrregularEnvelopeCard env={{ id: 'a', name: '용돈', monthlyAmount: 300000, startMonth: '2026-09' }} vKey="2026-09" />)
+    expect(html).toContain('400,000원')
+    expect(html).toContain('월 충전 300,000원')
+    expect(html).toContain('이번 달 추가 적립 +100,000원 · 고정지출 제외')
+  })
+  it('공동 충전액 조회 실패 시 불완전한 총액을 표시하지 않는다', () => {
+    state.allocationsError = '공동 월 충전액을 불러오지 못했어요.'
+    const html = renderToStaticMarkup(<Passbook />)
+    expect(html).toContain('role="alert"')
+    expect(html).toContain('다시 불러오기')
+    expect(html).not.toContain('예상 지출 <strong>')
+    expect(html).toContain('생활 예산')
+  })
   it('실지출을 먼저 표시하고 비정기와 고정지출을 예산 사용액과 분리한다', () => {
     const html = renderToStaticMarkup(<Passbook />)
-    expect(html.indexOf('이번 달 실지출')).toBeLessThan(html.indexOf('aria-label="생활 예산"'))
+    expect(html).toContain('이번 달 가계 지출')
+    expect(html.indexOf('이번 달 가계 지출')).toBeLessThan(html.indexOf('aria-label="생활 예산"'))
     expect(html).toContain('1,100,000')
     expect(html).toContain('<dt>비정기</dt><dd>200,000')
     expect(html).toContain('잔여 400,000원')
