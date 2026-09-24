@@ -164,44 +164,62 @@ export function isDeferredCardPayMethod(name) {
   return !!name && name.includes('카드') && !name.includes('체크')
 }
 
-// household owner의 결제계좌에 남겨둘 돈을 계산한다. 배우자 사용분·현금·체크카드 등은
-// 월급날 전체 자금계획에는 필요하지만 "owner 카드 결제계좌"의 보관금과는 별개다.
-export function paymentAccountSummary({
+// 이번 달을 마감하면서 다음 월급에서 남겨둘 돈을 계산한다. 이번 달 owner 카드값의 부족분,
+// 배우자 사용분, 다음 달 즉시출금 고정지출과 부부 용돈만 포함한다. 생활 예산 한도는
+// 실제 지출이 아니므로 포함하지 않는다.
+export function monthlyClosingSummary({
   monthTx,
-  activeFixed = [],
+  currentFixed = [],
+  nextFixed = [],
   fixedRateChanges = [],
+  nextAllowanceFixed = [],
   irregularEnvelopes = [],
   householdMembers = [],
   myUserId,
   myPayMethods = [],
-}, vKey) {
+}, currentMonth) {
   const ownerId = householdMembers.find((m) => m.role === 'owner')?.userId || myUserId
   const isOwnerView = ownerId === myUserId
+  const myPayMethodNames = new Set(myPayMethods.map((p) => p.name))
   const allowanceIds = new Set(
     irregularEnvelopes.filter((e) => e.scope === 'personal' && e.name?.includes('용돈')).map((e) => e.id),
   )
+  const isOwnerTx = (t) => t.userId === ownerId || (!t.userId && isOwnerView)
   const ownerCardTx = monthTx.filter(
     (t) => (t.type === 'living' || t.type === 'irregular') && isDeferredCardPayMethod(t.payMethod),
-  ).filter((t) => t.userId === ownerId || (!t.userId && isOwnerView))
+  ).filter(isOwnerTx)
   const sumAmount = (items) => items.reduce((sum, item) => sum + item.amount, 0)
-  const myPayMethodNames = new Set(myPayMethods.map((p) => p.name))
-  const ownerCardFixed = activeFixed.filter((f) => {
-    if (!isDeferredCardPayMethod(f.payMethod)) return false
-    return isOwnerView ? myPayMethodNames.has(f.payMethod) : !myPayMethodNames.has(f.payMethod)
-  })
-  const fixedTotal = ownerCardFixed.reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
-  const cardChargeTotal = sumAmount(ownerCardTx) + fixedTotal
-  const settlementReserve = sumAmount(monthTx.filter((t) => t.type === 'settlement' && !allowanceIds.has(t.categoryId)))
   const ownerAllowanceReserve = sumAmount(ownerCardTx.filter((t) => allowanceIds.has(t.categoryId)))
+  const settlementReserve = sumAmount(monthTx.filter((t) => t.type === 'settlement' && !allowanceIds.has(t.categoryId)))
   const reservedTotal = settlementReserve + ownerAllowanceReserve
+
+  const belongsToOwnerFixed = (f) => !f.payMethod || (isOwnerView ? myPayMethodNames.has(f.payMethod) : !myPayMethodNames.has(f.payMethod))
+  const ownerCardFixed = currentFixed.filter((f) => isDeferredCardPayMethod(f.payMethod) && belongsToOwnerFixed(f))
+  const cardChargeTotal = sumAmount(ownerCardTx)
+    + ownerCardFixed.reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, currentMonth), 0)
+  const cardTopUp = Math.max(0, cardChargeTotal - reservedTotal)
+
+  const spouseUsage = sumAmount(monthTx.filter((t) =>
+    (t.type === 'living' || t.type === 'irregular') && t.payMethod && t.userId && t.userId !== ownerId))
+    + currentFixed.filter((f) => f.payMethod && !belongsToOwnerFixed(f))
+      .reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, currentMonth), 0)
+
+  const nextMonth = addMonths(currentMonth, 1)
+  const nextImmediateFixed = nextFixed.filter((f) => belongsToOwnerFixed(f) && !isDeferredCardPayMethod(f.payMethod))
+    .reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, nextMonth), 0)
+  const nextAllowance = nextAllowanceFixed.filter((f) => f.name?.includes('용돈')).reduce((sum, f) => sum + f.amount, 0)
+  const salaryReserveTotal = cardTopUp + spouseUsage + nextImmediateFixed + nextAllowance
 
   return {
     cardChargeTotal,
+    cardTopUp,
     settlementReserve,
     ownerAllowanceReserve,
     reservedTotal,
-    salaryTopUp: Math.max(0, cardChargeTotal - reservedTotal),
-    carryoverReserve: Math.max(0, reservedTotal - cardChargeTotal),
+    spouseUsage,
+    nextImmediateFixed,
+    nextAllowance,
+    salaryReserveTotal,
     isOwnerView,
   }
 }

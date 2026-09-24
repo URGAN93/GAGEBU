@@ -13,7 +13,8 @@ import {
   creditedForEnvelope,
   monthlyAmountForMonth,
   irregularContributions,
-  paymentAccountSummary,
+  monthlyClosingSummary,
+  addMonths,
 } from '../lib/calc.js'
 import { statusColor } from '../lib/theme.js'
 import TxRow from '../components/TxRow.jsx'
@@ -50,6 +51,8 @@ export default function AnalysisScreen() {
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
   const vKey = monthKey(viewDate)
   const envelopeFixed = useEnvelopeFixedExpenses(vKey)
+  const nextVKey = addMonths(vKey, 1)
+  const nextEnvelopeFixed = useEnvelopeFixedExpenses(nextVKey)
   const allocationsError = useAppStore((s) => s.allocationsError)
   const monthTx = useMemo(() => expandMonthTx(transactions, vKey), [transactions, vKey])
   const activeFixed = useMemo(() => activeFixedExpenses(fixedExpenses, vKey), [fixedExpenses, vKey])
@@ -181,15 +184,19 @@ export default function AnalysisScreen() {
   })
   const payEntries = Object.entries(payTotals).sort((a, b) => b[1] - a[1])
   const payGrandTotal = payEntries.reduce((s, [, amt]) => s + amt, 0)
-  const paymentSummary = paymentAccountSummary({
+  const nextActiveFixed = activeFixedExpenses(fixedExpenses, nextVKey)
+  const paymentSummary = monthlyClosingSummary({
     monthTx,
-    activeFixed,
+    currentFixed: activeFixed,
+    nextFixed: nextActiveFixed,
     fixedRateChanges,
+    nextAllowanceFixed: nextEnvelopeFixed,
     irregularEnvelopes,
     householdMembers,
     myUserId,
     myPayMethods: payMethods,
   }, vKey)
+  const nextMonthLabel = `${Number(nextVKey.slice(5, 7))}월`
 
   // 원본과 동일하게, 이번 달 활성화된 고정지출이 아니라 등록된 전체 고정지출에서 결제수단으로 필터한다
   // ── 카테고리 필터 선택 시 상단에 보여줄 지출/예산 요약 ──
@@ -393,40 +400,62 @@ export default function AnalysisScreen() {
                 </button>
               </div>
             )}
-            <section className="payment-ready" aria-label="결제계좌 준비 현황">
-              <div className="payment-ready-head">
-                <div>
-                  <div className="payment-ready-eyebrow">결제계좌 준비 현황</div>
-                  <div className="payment-ready-amount">{fmt(paymentSummary.salaryTopUp)}원</div>
-                  <div className="payment-ready-caption">다음 월급에서 채울 금액</div>
+            {payOwnerFilter === 'all' && paymentSummary.isOwnerView && (
+              <section className="payment-ready" aria-label="월 마감">
+                <div className="payment-ready-head">
+                  <div>
+                    <div className="payment-ready-eyebrow">{vKey.slice(5, 7).replace(/^0/, '')}월 월 마감</div>
+                    <div className="payment-ready-amount">{fmt(paymentSummary.salaryReserveTotal)}원</div>
+                    <div className="payment-ready-caption">다음 월급에서 남겨둘 총액</div>
+                  </div>
+                  <div className="payment-ready-badge">{nextMonthLabel} 준비</div>
                 </div>
-                <div className="payment-ready-badge">{paymentSummary.isOwnerView ? '내 결제계좌' : '배우자 결제계좌'}</div>
-              </div>
-              <div className="payment-ready-rows">
-                <div className="payment-ready-row">
-                  <span>카드 청구 예정액</span>
-                  <b>{fmt(paymentSummary.cardChargeTotal)}원</b>
-                </div>
-                <div className="payment-ready-row total">
-                  <span>결제 보관금</span>
-                  <b>− {fmt(paymentSummary.reservedTotal)}원</b>
-                </div>
-                <div className="payment-ready-row detail">
-                  <span>정산금</span>
-                  <span>{fmt(paymentSummary.settlementReserve)}원</span>
-                </div>
-                {paymentSummary.ownerAllowanceReserve > 0 && (
+                <div className="payment-ready-rows">
+                  <div className="payment-ready-row">
+                    <span>내 카드값에 채울 돈</span>
+                    <b>{fmt(paymentSummary.cardTopUp)}원</b>
+                  </div>
                   <div className="payment-ready-row detail">
-                    <span>{paymentSummary.isOwnerView ? '내' : '배우자'} 용돈 카드 사용분</span>
+                    <span>카드 청구 {fmt(paymentSummary.cardChargeTotal)} − 보관금 {fmt(paymentSummary.reservedTotal)}</span>
+                  </div>
+                  {hasMultipleMembers && <div className="payment-ready-row">
+                    <span>{otherLabel} 사용분 보내기</span>
+                    <b>{fmt(paymentSummary.spouseUsage)}원</b>
+                  </div>}
+                  <div className="payment-ready-row">
+                    <span>{nextMonthLabel} 현금성 고정지출</span>
+                    <b>{fmt(paymentSummary.nextImmediateFixed)}원</b>
+                  </div>
+                  <div className="payment-ready-row">
+                    <span>{nextMonthLabel} 나·배우자 용돈</span>
+                    <b>{fmt(paymentSummary.nextAllowance)}원</b>
+                  </div>
+                </div>
+                <div className="payment-ready-note">생활 예산 한도는 실제 지출 전이라 포함하지 않아요.</div>
+              </section>
+            )}
+            {payOwnerFilter === 'mine' && paymentSummary.isOwnerView && (
+              <section className="payment-ready" aria-label="결제 보관금">
+                <div className="payment-ready-head">
+                  <div>
+                    <div className="payment-ready-eyebrow">결제 보관금</div>
+                    <div className="payment-ready-amount">{fmt(paymentSummary.reservedTotal)}원</div>
+                    <div className="payment-ready-caption">결제계좌에서 쓰지 않고 남겨둘 돈</div>
+                  </div>
+                  <div className="payment-ready-badge">내 결제계좌</div>
+                </div>
+                <div className="payment-ready-rows">
+                  <div className="payment-ready-row detail">
+                    <span>정산금</span>
+                    <span>{fmt(paymentSummary.settlementReserve)}원</span>
+                  </div>
+                  <div className="payment-ready-row detail">
+                    <span>내 용돈 카드 사용분</span>
                     <span>{fmt(paymentSummary.ownerAllowanceReserve)}원</span>
                   </div>
-                )}
-              </div>
-              {paymentSummary.carryoverReserve > 0 && (
-                <div className="payment-ready-carry">카드값을 채우고 {fmt(paymentSummary.carryoverReserve)}원이 보관금으로 남아요.</div>
-              )}
-              <div className="payment-ready-note">정산은 받은 달에 자동 반영해요. 배우자 사용분과 현금·체크카드는 이 결제계좌 계산에서 제외해요.</div>
-            </section>
+                </div>
+              </section>
+            )}
             {payEntries.length > 0 && (
               <div className="tx-item" style={{ marginBottom: 10 }}>
                 <span className="tx-merchant">{payOwnerFilter === 'all' ? '전체' : payOwnerFilter === 'mine' ? '나' : otherLabel} 합계</span>

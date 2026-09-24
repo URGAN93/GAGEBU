@@ -10,7 +10,7 @@ import {
   monthlyAmountForMonth,
   irregularContributions,
   isDeferredCardPayMethod,
-  paymentAccountSummary,
+  monthlyClosingSummary,
 } from './calc.js'
 
 describe('elapsedMonths', () => {
@@ -168,7 +168,7 @@ describe('irregularContributions', () => {
   })
 })
 
-describe('paymentAccountSummary', () => {
+describe('monthlyClosingSummary', () => {
   it('현금과 체크카드는 다음 달 카드 청구액에서 제외한다', () => {
     expect(isDeferredCardPayMethod('현대카드')).toBe(true)
     expect(isDeferredCardPayMethod('현금')).toBe(false)
@@ -176,7 +176,7 @@ describe('paymentAccountSummary', () => {
   })
 
   it('정산금과 owner 용돈 카드 사용분만 owner 결제 보관금으로 계산한다', () => {
-    const result = paymentAccountSummary({
+    const result = monthlyClosingSummary({
       monthTx: [
         { type: 'living', amount: 300000, payMethod: '현대카드', userId: 'owner', categoryId: 'food' },
         { type: 'irregular', amount: 80000, payMethod: '신한카드', userId: 'owner', categoryId: 'allowance' },
@@ -184,45 +184,47 @@ describe('paymentAccountSummary', () => {
         { type: 'living', amount: 50000, payMethod: '현금', userId: 'owner', categoryId: 'food' },
         { type: 'settlement', amount: 150000, userId: 'member', categoryId: 'medical' },
       ],
-      activeFixed: [{ id: 'phone', amount: 70000, payMethod: '현대카드' }],
       irregularEnvelopes: [{ id: 'allowance', name: '개인 용돈', scope: 'personal' }],
       householdMembers: [{ userId: 'owner', role: 'owner' }, { userId: 'member', role: 'member' }],
       myUserId: 'owner',
-      myPayMethods: [{ name: '현대카드' }, { name: '신한카드' }],
+      myPayMethods: [{ name: '현대카드' }, { name: '신한카드' }, { name: '현금' }],
+      currentFixed: [{ id: 'phone', amount: 70000, payMethod: '현대카드' }],
+      nextFixed: [{ id: 'rent', amount: 400000, payMethod: '현금' }],
+      nextAllowanceFixed: [{ name: '나 · 개인 용돈', amount: 300000 }, { name: '배우자 · 개인 용돈', amount: 250000 }],
     }, '2026-09')
 
     expect(result).toMatchObject({
       cardChargeTotal: 450000,
+      cardTopUp: 220000,
       settlementReserve: 150000,
       ownerAllowanceReserve: 80000,
       reservedTotal: 230000,
-      salaryTopUp: 220000,
-      carryoverReserve: 0,
+      spouseUsage: 200000,
+      nextImmediateFixed: 400000,
+      nextAllowance: 550000,
+      salaryReserveTotal: 1370000,
       isOwnerView: true,
     })
   })
 
-  it('member 화면에서도 owner 결제계좌만 계산하고 member 사용분은 제외한다', () => {
-    const result = paymentAccountSummary({
+  it('member 화면에서는 owner의 비공개 용돈 사용분을 추정하지 않는다', () => {
+    const result = monthlyClosingSummary({
       monthTx: [
         { type: 'living', amount: 200000, payMethod: '국민카드', userId: 'member', categoryId: 'medical' },
         { type: 'irregular', amount: 50000, payMethod: '국민카드', userId: 'member', categoryId: 'member-allowance' },
       ],
-      activeFixed: [{ id: 'member-phone', amount: 30000, payMethod: '국민카드' }],
       irregularEnvelopes: [{ id: 'member-allowance', name: '개인 용돈', scope: 'personal' }],
       householdMembers: [{ userId: 'owner', role: 'owner' }, { userId: 'member', role: 'member' }],
       myUserId: 'member',
       myPayMethods: [{ name: '국민카드' }],
     }, '2026-09')
 
-    expect(result.cardChargeTotal).toBe(0)
     expect(result.ownerAllowanceReserve).toBe(0)
-    expect(result.salaryTopUp).toBe(0)
     expect(result.isOwnerView).toBe(false)
   })
 
   it('용돈 정산은 용돈 잔액으로 돌아가므로 결제 보관금에서 제외한다', () => {
-    const result = paymentAccountSummary({
+    const result = monthlyClosingSummary({
       monthTx: [
         { type: 'irregular', amount: 100000, payMethod: '현대카드', userId: 'owner', categoryId: 'allowance' },
         { type: 'settlement', amount: 50000, userId: 'owner', categoryId: 'allowance' },
@@ -231,22 +233,9 @@ describe('paymentAccountSummary', () => {
       householdMembers: [{ userId: 'owner', role: 'owner' }],
       myUserId: 'owner',
     }, '2026-09')
-    expect(result.cardChargeTotal).toBe(100000)
     expect(result.ownerAllowanceReserve).toBe(100000)
     expect(result.settlementReserve).toBe(0)
     expect(result.reservedTotal).toBe(100000)
   })
 
-  it('보관금이 청구액보다 많으면 다음 달 이월액을 보여준다', () => {
-    const result = paymentAccountSummary({
-      monthTx: [
-        { type: 'living', amount: 100000, payMethod: '현대카드', userId: 'owner' },
-        { type: 'settlement', amount: 130000, userId: 'owner' },
-      ],
-      householdMembers: [{ userId: 'owner', role: 'owner' }],
-      myUserId: 'owner',
-    }, '2026-09')
-    expect(result.salaryTopUp).toBe(0)
-    expect(result.carryoverReserve).toBe(30000)
-  })
 })
