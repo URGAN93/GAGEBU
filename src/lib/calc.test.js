@@ -175,7 +175,7 @@ describe('paymentAccountSummary', () => {
     expect(isDeferredCardPayMethod('신한 체크카드')).toBe(false)
   })
 
-  it('정산금, owner 용돈 카드 사용분, member 카드 전달금을 결제 보관금으로 계산한다', () => {
+  it('정산금과 owner 용돈 카드 사용분만 owner 결제 보관금으로 계산한다', () => {
     const result = paymentAccountSummary({
       monthTx: [
         { type: 'living', amount: 300000, payMethod: '현대카드', userId: 'owner', categoryId: 'food' },
@@ -192,18 +192,17 @@ describe('paymentAccountSummary', () => {
     }, '2026-09')
 
     expect(result).toMatchObject({
-      cardChargeTotal: 650000,
+      cardChargeTotal: 450000,
       settlementReserve: 150000,
       ownerAllowanceReserve: 80000,
-      memberCardReserve: 200000,
-      reservedTotal: 430000,
+      reservedTotal: 230000,
       salaryTopUp: 220000,
       carryoverReserve: 0,
       isOwnerView: true,
     })
   })
 
-  it('member 화면에서도 본인이 보내는 공유 카드금과 고정지출을 전달금으로 본다', () => {
+  it('member 화면에서도 owner 결제계좌만 계산하고 member 사용분은 제외한다', () => {
     const result = paymentAccountSummary({
       monthTx: [
         { type: 'living', amount: 200000, payMethod: '국민카드', userId: 'member', categoryId: 'medical' },
@@ -216,11 +215,26 @@ describe('paymentAccountSummary', () => {
       myPayMethods: [{ name: '국민카드' }],
     }, '2026-09')
 
-    expect(result.cardChargeTotal).toBe(280000)
+    expect(result.cardChargeTotal).toBe(0)
     expect(result.ownerAllowanceReserve).toBe(0)
-    expect(result.memberCardReserve).toBe(280000)
     expect(result.salaryTopUp).toBe(0)
     expect(result.isOwnerView).toBe(false)
+  })
+
+  it('용돈 정산은 용돈 잔액으로 돌아가므로 결제 보관금에서 제외한다', () => {
+    const result = paymentAccountSummary({
+      monthTx: [
+        { type: 'irregular', amount: 100000, payMethod: '현대카드', userId: 'owner', categoryId: 'allowance' },
+        { type: 'settlement', amount: 50000, userId: 'owner', categoryId: 'allowance' },
+      ],
+      irregularEnvelopes: [{ id: 'allowance', name: '개인 용돈', scope: 'personal' }],
+      householdMembers: [{ userId: 'owner', role: 'owner' }],
+      myUserId: 'owner',
+    }, '2026-09')
+    expect(result.cardChargeTotal).toBe(100000)
+    expect(result.ownerAllowanceReserve).toBe(100000)
+    expect(result.settlementReserve).toBe(0)
+    expect(result.reservedTotal).toBe(100000)
   })
 
   it('보관금이 청구액보다 많으면 다음 달 이월액을 보여준다', () => {

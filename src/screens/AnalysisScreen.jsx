@@ -400,7 +400,7 @@ export default function AnalysisScreen() {
                   <div className="payment-ready-amount">{fmt(paymentSummary.salaryTopUp)}원</div>
                   <div className="payment-ready-caption">다음 월급에서 채울 금액</div>
                 </div>
-                <div className="payment-ready-badge">전체 기준</div>
+                <div className="payment-ready-badge">{paymentSummary.isOwnerView ? '내 결제계좌' : '배우자 결제계좌'}</div>
               </div>
               <div className="payment-ready-rows">
                 <div className="payment-ready-row">
@@ -421,17 +421,11 @@ export default function AnalysisScreen() {
                     <span>{fmt(paymentSummary.ownerAllowanceReserve)}원</span>
                   </div>
                 )}
-                {paymentSummary.memberCardReserve > 0 && (
-                  <div className="payment-ready-row detail">
-                    <span>{paymentSummary.isOwnerView ? `${otherLabel} 카드 전달금` : '내 카드 전달금'}</span>
-                    <span>{fmt(paymentSummary.memberCardReserve)}원</span>
-                  </div>
-                )}
               </div>
               {paymentSummary.carryoverReserve > 0 && (
                 <div className="payment-ready-carry">카드값을 채우고 {fmt(paymentSummary.carryoverReserve)}원이 보관금으로 남아요.</div>
               )}
-              <div className="payment-ready-note">정산은 받은 달에 자동 반영하고, 현금·체크카드는 카드 청구액에서 제외해요.</div>
+              <div className="payment-ready-note">정산은 받은 달에 자동 반영해요. 배우자 사용분과 현금·체크카드는 이 결제계좌 계산에서 제외해요.</div>
             </section>
             {payEntries.length > 0 && (
               <div className="tx-item" style={{ marginBottom: 10 }}>
