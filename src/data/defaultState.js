@@ -15,15 +15,6 @@ export const DEFAULT_STATE = {
   // scope: 'household'=가계부 구성원 전체 공유(경조사), 'personal'=본인만(개인용돈)
   irregularEnvelopes: [
     {
-      id: 'irregular1',
-      name: '경조사',
-      color: PALETTE[6],
-      monthlyAmount: 200000,
-      startMonth: nowMonthKey(),
-      subcats: ['경조사', '가족선물'],
-      scope: 'household',
-    },
-    {
       id: 'allowance',
       name: '개인 용돈',
       color: PALETTE[2],
@@ -31,6 +22,15 @@ export const DEFAULT_STATE = {
       startMonth: nowMonthKey(),
       subcats: ['꾸밈', '문화·취미', '의류', '자동차', '생활용품', '여행', '기타'],
       scope: 'personal',
+    },
+    {
+      id: 'irregular1',
+      name: '경조사',
+      color: PALETTE[6],
+      monthlyAmount: 200000,
+      startMonth: nowMonthKey(),
+      subcats: ['경조사', '가족선물'],
+      scope: 'household',
     },
   ],
   transactions: [],

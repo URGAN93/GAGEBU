@@ -28,6 +28,12 @@ export default function BudgetScreen() {
     () => fixedExpenses.filter((f) => activeFixedIds.has(f.id)).reduce((s, f) => s + fixedAmountForMonth(fixedRateChanges, f, vKey), 0),
     [fixedExpenses, activeFixedIds, fixedRateChanges, vKey],
   )
+  // 개인 누적 카테고리를 공동 카테고리보다 먼저 보여준다. 같은 scope 안에서는
+  // 사용자가 설정한 기존 순서를 유지한다.
+  const sortedIrregular = useMemo(
+    () => [...irregularEnvelopes].sort((a, b) => (a.scope === 'personal' ? 0 : 1) - (b.scope === 'personal' ? 0 : 1)),
+    [irregularEnvelopes],
+  )
   const sortedFixed = useMemo(() => {
     return [...fixedExpenses].sort((a, b) => {
       const aActive = activeFixedIds.has(a.id)
@@ -50,7 +56,7 @@ export default function BudgetScreen() {
 
       <SectionToggle title="누적 카테고리">
         <div className="envelopes">
-          {irregularEnvelopes.map((env) => (
+          {sortedIrregular.map((env) => (
             <IrregularEnvelopeCard key={env.id} env={env} vKey={vKey} />
           ))}
         </div>
