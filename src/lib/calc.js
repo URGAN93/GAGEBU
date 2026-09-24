@@ -158,6 +158,61 @@ export function monthlyBudgetSummary({ transactions, livingCategories, irregular
     totalPct: totalBudget ? Math.max(0, Math.min(100, totalSpent / totalBudget * 100)) : totalSpent > 0 ? 100 : 0 }
 }
 
+// 신용카드처럼 다음 달에 청구되는 결제수단만 결제계좌 준비 대상이다.
+// 현재 pay_methods에는 종류 컬럼이 없으므로 이름으로 판별하되, 체크카드는 즉시 출금으로 제외한다.
+export function isDeferredCardPayMethod(name) {
+  return !!name && name.includes('카드') && !name.includes('체크')
+}
+
+// 한 결제계좌로 카드값을 모으는 household의 월별 준비 현황.
+// owner의 개인용돈 카드 사용분, 모든 정산금, member가 보내는 공유 카드 사용분은
+// 이미 결제계좌에 들어온 돈으로 본다. 개인용돈 거래는 RLS로 본인에게만 보이므로
+// member의 비공개 용돈 청구액/입금액은 양쪽에서 함께 빠져 최종 부족액에 영향을 주지 않는다.
+export function paymentAccountSummary({
+  monthTx,
+  activeFixed = [],
+  fixedRateChanges = [],
+  irregularEnvelopes = [],
+  householdMembers = [],
+  myUserId,
+  myPayMethods = [],
+}, vKey) {
+  const ownerId = householdMembers.find((m) => m.role === 'owner')?.userId || myUserId
+  const isOwnerView = ownerId === myUserId
+  const allowanceIds = new Set(
+    irregularEnvelopes.filter((e) => e.scope === 'personal' && e.name?.includes('용돈')).map((e) => e.id),
+  )
+  const cardTx = monthTx.filter(
+    (t) => (t.type === 'living' || t.type === 'irregular') && isDeferredCardPayMethod(t.payMethod),
+  )
+  const sumAmount = (items) => items.reduce((sum, item) => sum + item.amount, 0)
+  const cardFixed = activeFixed.filter((f) => isDeferredCardPayMethod(f.payMethod))
+  const fixedTotal = cardFixed.reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, vKey), 0)
+  const cardChargeTotal = sumAmount(cardTx) + fixedTotal
+  const settlementReserve = sumAmount(monthTx.filter((t) => t.type === 'settlement'))
+  const ownerAllowanceReserve = sumAmount(cardTx.filter((t) => t.userId === ownerId && allowanceIds.has(t.categoryId)))
+
+  const memberTransactionReserve = sumAmount(cardTx.filter((t) => t.userId && t.userId !== ownerId))
+  const myPayMethodNames = new Set(myPayMethods.map((p) => p.name))
+  const memberFixedReserve = cardFixed.reduce((sum, f) => {
+    const belongsToMember = isOwnerView ? !myPayMethodNames.has(f.payMethod) : myPayMethodNames.has(f.payMethod)
+    return sum + (belongsToMember ? fixedAmountForMonth(fixedRateChanges, f, vKey) : 0)
+  }, 0)
+  const memberCardReserve = memberTransactionReserve + memberFixedReserve
+  const reservedTotal = settlementReserve + ownerAllowanceReserve + memberCardReserve
+
+  return {
+    cardChargeTotal,
+    settlementReserve,
+    ownerAllowanceReserve,
+    memberCardReserve,
+    reservedTotal,
+    salaryTopUp: Math.max(0, cardChargeTotal - reservedTotal),
+    carryoverReserve: Math.max(0, reservedTotal - cardChargeTotal),
+    isOwnerView,
+  }
+}
+
 // RPC는 두 계정의 월 충전 설정만 반환한다. 추가 적립은 이 경로에 들어오지 않는다.
 export function envelopeFixedExpenses({ household, householdAllocations = [], irregularEnvelopes = [], envelopeRateChanges = [], myUserId }, vKey) {
   const allocations = household ? householdAllocations : irregularEnvelopes.map((e) => ({ ...e, rateChanges: envelopeRateChanges }))

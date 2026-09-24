@@ -183,6 +183,18 @@
   .pay-pill.active{ background:var(--ink); border-color:var(--ink); }
   .pay-pill.active .pp-name{ color:var(--gold-soft); opacity:1; }
   .pay-pill.active .pp-amt{ color:var(--paper); }
+  .payment-ready{ margin:0 0 12px; padding:15px; border:1px solid rgba(62,122,85,.25); border-radius:14px; background:linear-gradient(145deg, rgba(255,255,255,.92), rgba(232,242,234,.82)); }
+  .payment-ready-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .payment-ready-eyebrow{ color:var(--ink-soft); font-size:11px; font-weight:700; letter-spacing:.2px; }
+  .payment-ready-amount{ margin-top:3px; color:var(--ok); font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:800; }
+  .payment-ready-caption{ margin-top:1px; color:var(--ink-soft); font-size:11px; opacity:.72; }
+  .payment-ready-badge{ padding:4px 8px; border-radius:999px; background:rgba(62,122,85,.12); color:var(--ok); font-size:10.5px; font-weight:800; white-space:nowrap; }
+  .payment-ready-rows{ margin-top:13px; padding-top:8px; border-top:1px solid var(--line); }
+  .payment-ready-row{ display:flex; justify-content:space-between; gap:12px; padding:5px 0; color:var(--ink); font-size:12.5px; }
+  .payment-ready-row.total{ padding-top:8px; border-top:1px dashed var(--line); }
+  .payment-ready-row.detail{ padding:2px 0 2px 12px; color:var(--ink-soft); font-size:11.5px; }
+  .payment-ready-carry{ margin-top:8px; padding:8px 10px; border-radius:9px; background:rgba(185,138,46,.12); color:var(--ink-soft); font-size:11.5px; font-weight:700; }
+  .payment-ready-note{ margin-top:8px; color:var(--ink-soft); font-size:10.5px; line-height:1.45; opacity:.68; }
 
   .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr) minmax(34px,0.75fr); gap:5px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px; min-width:0; }
   .cal-dow{ text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); opacity:0.5; padding-bottom:4px; }
