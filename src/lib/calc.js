@@ -164,15 +164,14 @@ export function isDeferredCardPayMethod(name) {
   return !!name && name.includes('카드') && !name.includes('체크')
 }
 
-// 이번 달을 마감하면서 다음 월급에서 남겨둘 돈을 계산한다. 이번 달 owner 카드값의 부족분,
-// 배우자 사용분, 다음 달 즉시출금 고정지출과 부부 용돈만 포함한다. 생활 예산 한도는
-// 실제 지출이 아니므로 포함하지 않는다.
+// 이번 달을 마감하면서 준비해 둘 전체 금액을 계산한다. 이미 쌓아 둔 결제 보관금과
+// 다음 월급에서 추가로 남길 돈을 분리하며, 생활 예산 한도는 실제 지출 전이므로 포함하지 않는다.
 export function monthlyClosingSummary({
   monthTx,
   currentFixed = [],
   nextFixed = [],
   fixedRateChanges = [],
-  nextAllowanceFixed = [],
+  nextEnvelopeFixed = [],
   irregularEnvelopes = [],
   householdMembers = [],
   myUserId,
@@ -207,8 +206,10 @@ export function monthlyClosingSummary({
   const nextMonth = addMonths(currentMonth, 1)
   const nextImmediateFixed = nextFixed.filter((f) => belongsToOwnerFixed(f) && !isDeferredCardPayMethod(f.payMethod))
     .reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, nextMonth), 0)
-  const nextAllowance = nextAllowanceFixed.filter((f) => f.name?.includes('용돈')).reduce((sum, f) => sum + f.amount, 0)
-  const salaryReserveTotal = cardTopUp + spouseUsage + nextImmediateFixed + nextAllowance
+  const nextAllowance = nextEnvelopeFixed.filter((f) => f.name?.includes('용돈')).reduce((sum, f) => sum + f.amount, 0)
+  const nextEventFund = nextEnvelopeFixed.filter((f) => f.name?.includes('경조사')).reduce((sum, f) => sum + f.amount, 0)
+  const salaryReserveTotal = cardTopUp + spouseUsage + nextImmediateFixed + nextAllowance + nextEventFund
+  const closingPreparedTotal = reservedTotal + salaryReserveTotal
 
   return {
     cardChargeTotal,
@@ -219,7 +220,9 @@ export function monthlyClosingSummary({
     spouseUsage,
     nextImmediateFixed,
     nextAllowance,
+    nextEventFund,
     salaryReserveTotal,
+    closingPreparedTotal,
     isOwnerView,
   }
 }

@@ -190,7 +190,7 @@ export default function AnalysisScreen() {
     currentFixed: activeFixed,
     nextFixed: nextActiveFixed,
     fixedRateChanges,
-    nextAllowanceFixed: nextEnvelopeFixed,
+    nextEnvelopeFixed,
     irregularEnvelopes,
     householdMembers,
     myUserId,
@@ -405,18 +405,26 @@ export default function AnalysisScreen() {
                 <div className="payment-ready-head">
                   <div>
                     <div className="payment-ready-eyebrow">{vKey.slice(5, 7).replace(/^0/, '')}월 월 마감</div>
-                    <div className="payment-ready-amount">{fmt(paymentSummary.salaryReserveTotal)}원</div>
-                    <div className="payment-ready-caption">다음 월급에서 남겨둘 총액</div>
+                    <div className="payment-ready-amount">{fmt(paymentSummary.closingPreparedTotal)}원</div>
+                    <div className="payment-ready-caption">보관금 포함 전체 준비금</div>
                   </div>
                   <div className="payment-ready-badge">{nextMonthLabel} 준비</div>
                 </div>
                 <div className="payment-ready-rows">
                   <div className="payment-ready-row">
-                    <span>내 카드값에 채울 돈</span>
-                    <b>{fmt(paymentSummary.cardTopUp)}원</b>
+                    <span>이미 보관 중</span>
+                    <b>{fmt(paymentSummary.reservedTotal)}원</b>
                   </div>
                   <div className="payment-ready-row detail">
-                    <span>카드 청구 {fmt(paymentSummary.cardChargeTotal)} − 보관금 {fmt(paymentSummary.reservedTotal)}</span>
+                    <span>정산금 {fmt(paymentSummary.settlementReserve)} · 내 용돈 카드 {fmt(paymentSummary.ownerAllowanceReserve)}</span>
+                  </div>
+                  <div className="payment-ready-row total">
+                    <span>다음 월급에서 추가로 남길 돈</span>
+                    <b>{fmt(paymentSummary.salaryReserveTotal)}원</b>
+                  </div>
+                  <div className="payment-ready-row detail">
+                    <span>내 카드값 부족분</span>
+                    <span>{fmt(paymentSummary.cardTopUp)}원</span>
                   </div>
                   {hasMultipleMembers && <div className="payment-ready-row">
                     <span>{otherLabel} 사용분 보내기</span>
@@ -429,6 +437,10 @@ export default function AnalysisScreen() {
                   <div className="payment-ready-row">
                     <span>{nextMonthLabel} 나·배우자 용돈</span>
                     <b>{fmt(paymentSummary.nextAllowance)}원</b>
+                  </div>
+                  <div className="payment-ready-row">
+                    <span>{nextMonthLabel} 경조사비</span>
+                    <b>{fmt(paymentSummary.nextEventFund)}원</b>
                   </div>
                 </div>
                 <div className="payment-ready-note">생활 예산 한도는 실제 지출 전이라 포함하지 않아요.</div>

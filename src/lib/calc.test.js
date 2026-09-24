@@ -190,7 +190,11 @@ describe('monthlyClosingSummary', () => {
       myPayMethods: [{ name: '현대카드' }, { name: '신한카드' }, { name: '현금' }],
       currentFixed: [{ id: 'phone', amount: 70000, payMethod: '현대카드' }],
       nextFixed: [{ id: 'rent', amount: 400000, payMethod: '현금' }],
-      nextAllowanceFixed: [{ name: '나 · 개인 용돈', amount: 300000 }, { name: '배우자 · 개인 용돈', amount: 250000 }],
+      nextEnvelopeFixed: [
+        { name: '나 · 개인 용돈', amount: 300000 },
+        { name: '배우자 · 개인 용돈', amount: 250000 },
+        { name: '공동 · 경조사', amount: 200000 },
+      ],
     }, '2026-09')
 
     expect(result).toMatchObject({
@@ -202,7 +206,9 @@ describe('monthlyClosingSummary', () => {
       spouseUsage: 200000,
       nextImmediateFixed: 400000,
       nextAllowance: 550000,
-      salaryReserveTotal: 1370000,
+      nextEventFund: 200000,
+      salaryReserveTotal: 1570000,
+      closingPreparedTotal: 1800000,
       isOwnerView: true,
     })
   })
