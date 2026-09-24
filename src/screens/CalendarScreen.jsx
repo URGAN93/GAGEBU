@@ -1,7 +1,7 @@
-import { Fragment, useCallback, useEffect, useMemo } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { expandMonthTx, fmtMan, monthKey, todayKST } from '../lib/calc.js'
-import { holidayName } from '../data/holidays.js'
+import { holidayName, loadHolidays } from '../data/holidays.js'
 import { useSwipeMonth } from '../hooks/useSwipeMonth.js'
 import TxRow from '../components/TxRow.jsx'
 
@@ -20,6 +20,20 @@ export default function CalendarScreen() {
 
   const viewKey = monthKey(viewDate)
   const monthTx = useMemo(() => expandMonthTx(transactions, viewKey), [transactions, viewKey])
+  const y = viewDate.getFullYear()
+  const m = viewDate.getMonth()
+  const [holidays, setHolidays] = useState({})
+
+  useEffect(() => {
+    let active = true
+    setHolidays({})
+    loadHolidays(y).then((loaded) => {
+      if (active) setHolidays(loaded)
+    })
+    return () => {
+      active = false
+    }
+  }, [y])
 
   // 달이 바뀌면: 실제 오늘이 속한 달이면 오늘을 자동 선택, 아니면 선택 해제.
   // (예전 vanilla 버전에서 이걸 깜빡해서 하단 리스트가 이전 달 내역인 채로 남아있던 버그가 있었다 —
@@ -33,8 +47,6 @@ export default function CalendarScreen() {
   const handleSwipe = useCallback((dir) => shiftMonth(dir), [shiftMonth])
   const { areaRef, dragRef } = useSwipeMonth(handleSwipe)
 
-  const y = viewDate.getFullYear()
-  const m = viewDate.getMonth()
   const firstDow = (new Date(y, m, 1).getDay() + 6) % 7
   const daysInMonth = new Date(y, m + 1, 0).getDate()
   const todayStr = todayKST()
@@ -61,7 +73,7 @@ export default function CalendarScreen() {
   }
 
   const dayTx = useMemo(() => (selectedCalDate ? monthTx.filter((t) => t.date === selectedCalDate) : []), [monthTx, selectedCalDate])
-  const selectedHoliday = selectedCalDate ? holidayName(selectedCalDate) : null
+  const selectedHoliday = selectedCalDate ? holidayName(selectedCalDate, holidays) : null
 
   const categories = { incomeCategories, livingCategories, irregularEnvelopes }
 
@@ -85,7 +97,7 @@ export default function CalendarScreen() {
               if (amt) weekTotal += amt
               const isToday = dateStr === todayStr
               const isSelected = !isToday && dateStr === selectedCalDate
-              const isHoliday = !!holidayName(dateStr)
+              const isHoliday = !!holidayName(dateStr, holidays)
               const dNumClass = isHoliday || i === 6 ? 'sun' : i === 5 ? 'sat' : ''
               return (
                 <div
@@ -108,13 +120,15 @@ export default function CalendarScreen() {
         </div>
         </div>
         {selectedCalDate && (
-          <div className="tx-list cal-tx-list">
+          <div className="cal-day-detail">
             {selectedHoliday && <div className="cal-holiday-label">{selectedHoliday}</div>}
-            {dayTx.length === 0 ? (
-              <div className="tx-empty">{selectedCalDate.slice(5).replace('-', '.')}에는 지출이 없어요.</div>
-            ) : (
-              dayTx.map((t) => <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} onClick={openTxSheet} />)
-            )}
+            <div className="tx-list cal-tx-list">
+              {dayTx.length === 0 ? (
+                <div className="tx-empty">{selectedCalDate.slice(5).replace('-', '.')}에는 지출이 없어요.</div>
+              ) : (
+                dayTx.map((t) => <TxRow key={t.id + (t.installmentIndex || '')} tx={t} categories={categories} onClick={openTxSheet} />)
+              )}
+            </div>
           </div>
         )}
       </div>

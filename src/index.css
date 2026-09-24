@@ -210,8 +210,9 @@
   .cal-week-total{ min-width:0; border-radius:9px; display:flex; align-items:center; justify-content:center; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:8.5px; font-weight:700; color:var(--paper); background:var(--ink); white-space:nowrap; overflow:hidden; padding:0 2px; }
   .cal-day.today{ outline:2px solid var(--gold); }
   .cal-day.selected{ outline:2px solid var(--ink); }
-  .cal-tx-list{ margin-top:12px; }
-  .cal-holiday-label{ font-size:11.5px; font-weight:700; color:var(--over); margin-bottom:8px; }
+  .cal-day-detail{ min-width:0; margin-top:12px; }
+  .cal-tx-list{ margin-top:0; }
+  .cal-holiday-label{ margin:0 2px 8px; font-size:11.5px; font-weight:700; color:var(--over); }
 
   .fab{
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);
@@ -350,7 +351,7 @@
     .fab{ bottom:calc(22px + env(safe-area-inset-bottom,0)); }
     header{ border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:16px; }
     .calendar-wrap{ display:grid; grid-template-columns:1fr 360px; gap:16px; align-items:start; }
-    .cal-tx-list{ margin-top:0; border-left:1px solid var(--line); padding-left:16px; }
+    .cal-day-detail{ margin-top:0; border-left:1px solid var(--line); padding-left:16px; }
     .cal-grid{ grid-template-columns:repeat(7,1fr) minmax(56px,0.9fr); }
     .cal-week-total{ font-size:11px; }
   }

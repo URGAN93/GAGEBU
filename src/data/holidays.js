@@ -1,29 +1,65 @@
-// 대한민국 공휴일(간단 버전) — 음력 기반 공휴일(설날/추석/부처님오신날)과 대체공휴일은 매년 날짜가
-// 바뀌므로 라이브러리 없이는 계산할 수 없어서, 연도별로 직접 채워두는 정적 테이블로 관리한다.
-// 새해가 되면 그 해 날짜를 추가해줘야 한다 (검색: "OOOO년 대한민국 공휴일").
-export const HOLIDAYS = {
-  '2026-01-01': '신정',
-  '2026-02-16': '설날 연휴',
-  '2026-02-17': '설날',
-  '2026-02-18': '설날 연휴',
-  '2026-03-01': '삼일절',
-  '2026-03-02': '삼일절 대체공휴일',
-  '2026-05-05': '어린이날',
-  '2026-05-24': '부처님오신날',
-  '2026-05-25': '부처님오신날 대체공휴일',
-  '2026-06-03': '전국동시지방선거',
-  '2026-06-06': '현충일',
-  '2026-08-15': '광복절',
-  '2026-08-17': '광복절 대체공휴일',
-  '2026-09-24': '추석 연휴',
-  '2026-09-25': '추석',
-  '2026-09-26': '추석 연휴',
-  '2026-10-03': '개천절',
-  '2026-10-05': '개천절 대체공휴일',
-  '2026-10-09': '한글날',
-  '2026-12-25': '성탄절',
+import { getHolidayPreset } from '@hyunbinseo/holidays-kr'
+
+const REMOTE_BASE = 'https://holidays.hyunbin.page'
+const yearCache = new Map()
+
+function normalizeHolidayName(name) {
+  const aliases = {
+    '1월 1일': '신정',
+    '3ㆍ1절': '삼일절',
+    '부처님 오신 날': '부처님오신날',
+    기독탄신일: '성탄절',
+    '설날 전날': '설날 연휴',
+    '설날 다음 날': '설날 연휴',
+    '추석 전날': '추석 연휴',
+    '추석 다음 날': '추석 연휴',
+  }
+  if (aliases[name]) return aliases[name]
+  const substitute = name.match(/^대체공휴일\((.+)\)$/)
+  if (substitute) return normalizeHolidayName(substitute[1]) + ' 대체공휴일'
+  return name
 }
 
-export function holidayName(dateStr) {
-  return HOLIDAYS[dateStr] || null
+export function normalizeHolidayPreset(preset) {
+  return Object.fromEntries(Object.entries(preset).map(([date, names]) => {
+    const list = Array.isArray(names) ? names : [names]
+    return [date, [...new Set(list.map(normalizeHolidayName))].join(' · ')]
+  }))
+}
+
+function fixedHolidayFallback(year) {
+  return {
+    [year + '-01-01']: '신정',
+    [year + '-03-01']: '삼일절',
+    [year + '-05-05']: '어린이날',
+    [year + '-06-06']: '현충일',
+    [year + '-08-15']: '광복절',
+    [year + '-10-03']: '개천절',
+    [year + '-10-09']: '한글날',
+    [year + '-12-25']: '성탄절',
+  }
+}
+
+async function fetchRemotePreset(year) {
+  const response = await fetch(REMOTE_BASE + '/' + year + '.json')
+  if (!response.ok) throw new Error('공휴일 데이터 응답 오류: ' + response.status)
+  return response.json()
+}
+
+// 공개 월력요항 데이터가 갱신되면 앱 코드 수정 없이 새 연도 공휴일을 불러온다.
+// 네트워크가 끊겼거나 제공처에 장애가 있으면 패키지에 포함된 연도 데이터로 대체한다.
+export function loadHolidays(year) {
+  const key = String(year)
+  if (!yearCache.has(key)) {
+    const request = fetchRemotePreset(key)
+      .catch(() => getHolidayPreset(key))
+      .then(normalizeHolidayPreset)
+      .catch(() => fixedHolidayFallback(key))
+    yearCache.set(key, request)
+  }
+  return yearCache.get(key)
+}
+
+export function holidayName(dateStr, holidays) {
+  return holidays[dateStr] || null
 }

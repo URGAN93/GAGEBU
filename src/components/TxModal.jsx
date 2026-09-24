@@ -54,6 +54,10 @@ export default function TxModal() {
     setAmountKeypadOpen(false)
   }
 
+  function closeTextKeyboard(e) {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.currentTarget.blur()
+  }
+
   // 시트가 열릴 때(또는 편집 대상이 바뀔 때) 폼을 원본 openSheet()와 동일한 규칙으로 채운다.
   useEffect(() => {
     if (!txSheetOpen) return
@@ -255,9 +259,11 @@ export default function TxModal() {
                 <input
                   type="text"
                   placeholder="예) 스타벅스"
+                  enterKeyHint="done"
                   style={{ textAlign: 'right' }}
                   value={fMerchant}
                   onFocus={closeAmountKeypad}
+                  onKeyDown={closeTextKeyboard}
                   onChange={(e) => setFMerchant(e.target.value)}
                 />
               </div>
@@ -301,7 +307,16 @@ export default function TxModal() {
                   ))}
                 </div>
                 {(isIncome || isSettlement) && (
-                  <input type="text" placeholder="직접 입력도 가능" style={{ marginTop: 8 }} value={fSubcat} onFocus={closeAmountKeypad} onChange={(e) => setFSubcat(e.target.value)} />
+                  <input
+                    type="text"
+                    placeholder="직접 입력도 가능"
+                    enterKeyHint="done"
+                    style={{ marginTop: 8 }}
+                    value={fSubcat}
+                    onFocus={closeAmountKeypad}
+                    onKeyDown={closeTextKeyboard}
+                    onChange={(e) => setFSubcat(e.target.value)}
+                  />
                 )}
               </div>
             )}
