@@ -235,3 +235,23 @@ export function rowToPay(r) {
 export function payToRow(p, idx) {
   return { id: p.id, name: p.name, sort_order: idx }
 }
+
+export function rowToCardImport(r) {
+  return {
+    id: r.id,
+    cardName: r.card_name,
+    amount: r.amount,
+    occurredAt: r.occurred_at,
+    installmentCount: r.installment_count || null,
+    status: r.approval_status || 'approved',
+  }
+}
+
+export function rowToCardImportSource(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    createdAt: r.created_at,
+    lastSeenAt: r.last_seen_at || null,
+  }
+}

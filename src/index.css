@@ -214,6 +214,50 @@
   .cal-tx-list{ margin-top:0; }
   .cal-holiday-label{ margin:0 2px 8px; font-size:11.5px; font-weight:700; color:var(--over); }
 
+  .card-import-banner{
+    width:100%; display:flex; align-items:center; gap:12px; margin:0 0 14px; padding:13px 14px;
+    border:1px solid rgba(191,139,44,.32); border-radius:14px; background:linear-gradient(135deg,#fffaf0,var(--paper-dim));
+    color:var(--ink); text-align:left; cursor:pointer; box-shadow:0 4px 14px rgba(19,42,51,.06);
+  }
+  .card-import-icon{ width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:11px; background:var(--ink); color:var(--gold-soft); font-size:23px; font-weight:800; }
+  .card-import-banner-copy{ display:flex; flex:1; min-width:0; flex-direction:column; gap:3px; }
+  .card-import-banner-copy strong{ font-size:14px; }
+  .card-import-banner-copy small{ color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-import-chevron{ color:var(--ink-soft); font-size:24px; opacity:.55; }
+  .card-import-heading{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .card-import-heading span{ display:block; margin-bottom:3px; color:var(--ink-soft); font-size:11px; font-weight:700; letter-spacing:.6px; }
+  .card-import-heading h3{ margin:0; }
+  .card-import-heading > strong{ min-width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:var(--ink); color:var(--paper); font-family:'IBM Plex Mono',monospace; }
+  .card-import-help{ margin:12px 0 16px; color:var(--ink-soft); font-size:12.5px; line-height:1.5; }
+  .card-import-list{ display:flex; flex-direction:column; gap:12px; }
+  .card-import-item{ padding:16px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+  .card-import-item-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .card-import-item-top > div{ display:flex; align-items:baseline; gap:8px; }
+  .card-import-item-top strong{ font-family:'IBM Plex Mono',monospace; font-size:19px; }
+  .card-import-item-top time{ color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; font-size:11px; }
+  .card-import-status{ color:var(--gold); font-size:11px; font-weight:800; }
+  .card-import-meta{ display:flex; gap:7px; margin-top:9px; color:var(--ink-soft); font-size:12px; }
+  .card-import-meta span + span::before{ content:'·'; margin-right:7px; opacity:.5; }
+  .card-import-match{ margin-top:12px; padding:8px 10px; border-radius:9px; background:var(--paper-dim); color:var(--ink-soft); font-size:11.5px; font-weight:600; }
+  .card-import-match.matched{ color:var(--ink); }
+  .card-import-actions{ display:grid; grid-template-columns:90px 1fr; gap:8px; margin-top:12px; }
+  .card-import-actions button{ padding:11px; border-radius:10px; font-family:'Pretendard'; font-size:13px; font-weight:700; cursor:pointer; }
+  .card-import-ignore{ border:1px solid var(--line); background:#fff; color:var(--ink-soft); }
+  .card-import-review{ border:1px solid var(--ink); background:var(--ink); color:var(--paper); }
+  .card-import-settings-desc{ margin:0 0 12px; color:var(--ink-soft); font-size:12px; line-height:1.55; }
+  .card-source-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+  .card-source-row strong,.card-source-row small{ display:block; }
+  .card-source-row strong{ font-size:13.5px; }
+  .card-source-row small{ margin-top:3px; color:var(--ink-soft); font-size:10.5px; }
+  .card-source-row button{ flex:0 0 auto; border:0; background:transparent; color:var(--over); font-size:11px; font-weight:700; cursor:pointer; }
+  .card-import-connection{ margin-top:10px; padding:14px; border:1px solid rgba(191,139,44,.35); border-radius:12px; background:#fffaf0; }
+  .card-import-connection > strong{ display:block; margin-bottom:12px; font-size:13px; }
+  .card-import-connection label{ display:block; margin:10px 0 5px; color:var(--ink-soft); font-size:10.5px; font-weight:700; }
+  .card-import-copy-row{ display:flex; gap:6px; }
+  .card-import-copy-row input{ min-width:0; flex:1; padding:9px; border:1px solid var(--line); border-radius:8px; background:#fff; font-family:'IBM Plex Mono',monospace; font-size:10px; }
+  .card-import-copy-row button{ flex:0 0 auto; padding:8px 10px; border:0; border-radius:8px; background:var(--ink); color:var(--paper); font-size:11px; font-weight:700; cursor:pointer; }
+  .card-import-connection p{ margin:12px 0 0; color:var(--ink-soft); font-size:11px; line-height:1.5; }
+
   .fab{
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0)); transform:translateX(-50%);
     width:min(444px, calc(100% - 36px)); background:var(--ink); color:var(--paper); border:none; border-radius:16px;

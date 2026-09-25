@@ -20,6 +20,8 @@ import {
   rowToAssetCategory,
   assetCategoryToRow,
   rowToAssetEntry,
+  rowToCardImport,
+  rowToCardImportSource,
 } from './converters.js'
 
 function sleep(ms) {
@@ -90,6 +92,8 @@ export async function loadState(household, myUserId, members) {
     sb.from('asset_entries').select('*').order('created_at', { ascending: false }),
     sb.from('notification_settings').select('*').limit(1),
     sb.from('push_subscriptions').select('id').limit(1),
+    sb.from('card_imports').select('*').eq('status', 'pending').order('occurred_at', { ascending: false }),
+    sb.from('card_import_sources').select('id,name,created_at,last_seen_at').order('created_at', { ascending: false }),
     loadHouseholdAllocations(household),
   ])
   if (core.status === 'rejected') throw core.reason
@@ -254,11 +258,23 @@ export async function loadState(household, myUserId, members) {
     console.warn('notification_settings/push_subscriptions 테이블을 아직 사용할 수 없어요 (SQL v4 마이그레이션 필요할 수 있음):', err)
   }
 
+  let pendingCardPayments = []
+  let cardImportSources = []
+  try {
+    const { data: importRows, error: eImports } = read(9)
+    const { data: sourceRows, error: eSources } = read(10)
+    if (eImports) throw eImports
+    pendingCardPayments = (importRows || []).map(rowToCardImport)
+    if (!eSources) cardImportSources = (sourceRows || []).map(rowToCardImportSource)
+  } catch (err) {
+    console.warn('card_imports 테이블을 아직 사용할 수 없어요 (SQL v11 마이그레이션 필요할 수 있음):', err)
+  }
+
   return {
     livingCategories: livingRows.length ? livingRows.map(rowToLivingCat) : structuredClone(DEFAULT_STATE.livingCategories),
     // 새 누적 카테고리를 만든 경우에만 충전액을 다시 조회한다.
     ...(!livingRows.length && !irrRows.length ? await loadHouseholdAllocations(household)
-      : optional[9].status === 'fulfilled' ? optional[9].value
+      : optional[11].status === 'fulfilled' ? optional[11].value
         : { householdAllocations: [], allocationsError: '공동 월 충전액을 불러오지 못했어요. 다시 시도해주세요.' }),
     irregularEnvelopes: irrRows.length ? irrRows.map(rowToIrregular) : structuredClone(DEFAULT_STATE.irregularEnvelopes),
     transactions: txRows.map(rowToTx),
@@ -276,6 +292,8 @@ export async function loadState(household, myUserId, members) {
     householdMembers: members || [],
     notificationSettings,
     pushSubscribed,
+    pendingCardPayments,
+    cardImportSources,
   }
 }
 

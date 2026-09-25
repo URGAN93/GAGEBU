@@ -20,6 +20,8 @@ import { findCatPool } from '../lib/selectors.js'
 import { loadFinancialState } from '../data/financialState.js'
 import { VAPID_PUBLIC_KEY } from '../data/supabaseClient.js'
 import { urlBase64ToUint8Array, registerServiceWorker } from '../lib/push.js'
+import { importedPaymentDraft } from '../lib/cardImports.js'
+import { DEFAULT_STATE } from '../data/defaultState.js'
 
 // "이 달부터" 변경 이력(생활 예산/누적 충전액)에 공통되는 upsert 로직. id는 매칭 필드+effectiveMonth로
 // 결정되므로, 있으면 그 id로 덮어쓰고 없으면 새로 만든다 — 두 스토어 액션(upsertLivingBudgetRate/
@@ -69,6 +71,8 @@ const initialData = {
   householdMembers: [],
   notificationSettings: { dailyReminderEnabled: true, dailyReminderHour: 21 },
   pushSubscribed: false,
+  pendingCardPayments: [],
+  cardImportSources: [],
 }
 
 export const useAppStore = create((set, get) => ({
@@ -89,6 +93,26 @@ export const useAppStore = create((set, get) => ({
       if (get().financialRefreshId === requestId) set({ allocationsError: '최신 공동 예산을 불러오지 못했어요. 연결을 확인하고 다시 시도해주세요.' })
     }
   },
+  loadCardImportPreview() {
+    if (!import.meta.env.DEV) return
+    set({
+      ...DEFAULT_STATE,
+      livingCategories: DEFAULT_STATE.livingCategories.map((item) => ({ ...item })),
+      irregularEnvelopes: DEFAULT_STATE.irregularEnvelopes.map((item) => ({ ...item })),
+      payMethods: DEFAULT_STATE.payMethods.map((item) => ({ ...item })),
+      incomeCategories: DEFAULT_STATE.incomeCategories.map((item) => ({ ...item })),
+      authStatus: 'ready',
+      startupInProgress: false,
+      startupError: null,
+      myUserId: 'preview-user',
+      cardImportSources: [{ id: 'preview-source', name: '내 갤럭시', createdAt: '2026-09-25T09:00:00.000Z', lastSeenAt: '2026-09-25T09:10:00.000Z' }],
+      pendingCardPayments: [
+        { id: 'preview_hyundai_20260925_1810', cardName: '현대 M BOOST', amount: 27200, occurredAt: '2026-09-25T09:10:00.000Z', installmentCount: null, status: 'approved' },
+        { id: 'preview_kb_20260924_1215', cardName: 'KB국민 My WE:SH', amount: 8900, occurredAt: '2026-09-24T03:15:00.000Z', installmentCount: null, status: 'approved' },
+        { id: 'preview_hyundai_20260923_2040', cardName: '현대 M BOOST', amount: 197000, occurredAt: '2026-09-23T11:40:00.000Z', installmentCount: 3, status: 'approved' },
+      ],
+    })
+  },
   authStatus: 'loading', // 'loading' | 'signed-out' | 'needs-household' | 'ready'
   toast: null,
   nextColorIdx: 0,
@@ -99,6 +123,8 @@ export const useAppStore = create((set, get) => ({
   editingTxId: null,
   editingInstMonth: null,
   settingsSheetOpen: false,
+  cardInboxOpen: false,
+  transactionDraft: null,
   ...initialData,
 
   shiftMonth(delta) {
@@ -112,10 +138,81 @@ export const useAppStore = create((set, get) => ({
   },
 
   openTxSheet(txId, instMonth) {
-    set({ txSheetOpen: true, editingTxId: txId || null, editingInstMonth: instMonth || null })
+    set({ txSheetOpen: true, editingTxId: txId || null, editingInstMonth: instMonth || null, transactionDraft: null })
   },
   closeTxSheet() {
-    set({ txSheetOpen: false, editingTxId: null, editingInstMonth: null })
+    const returnToInbox = !!get().transactionDraft?.pendingPaymentId && get().pendingCardPayments.length > 0
+    set({ txSheetOpen: false, editingTxId: null, editingInstMonth: null, transactionDraft: null, cardInboxOpen: returnToInbox })
+  },
+
+  openCardInbox() {
+    set({ cardInboxOpen: true })
+  },
+  closeCardInbox() {
+    set({ cardInboxOpen: false })
+  },
+  reviewCardPayment(paymentId) {
+    const payment = get().pendingCardPayments.find((item) => item.id === paymentId)
+    if (!payment) return
+    set({
+      cardInboxOpen: false,
+      txSheetOpen: true,
+      editingTxId: null,
+      editingInstMonth: null,
+      transactionDraft: importedPaymentDraft(payment, get().payMethods),
+    })
+  },
+  async ignoreCardPayment(paymentId) {
+    if (get().myUserId !== 'preview-user') {
+      const { error } = await sb.from('card_imports').update({ status: 'ignored', updated_at: new Date().toISOString() }).eq('id', paymentId)
+      if (error) {
+        get().showToast('제외 처리에 실패했어요')
+        return { ok: false }
+      }
+    }
+    set((s) => ({ pendingCardPayments: s.pendingCardPayments.filter((item) => item.id !== paymentId), cardInboxOpen: s.pendingCardPayments.length > 1 }))
+    get().showToast('자동 수집 내역에서 제외했어요')
+    return { ok: true }
+  },
+  async resolveCardPayment(paymentId, transactionId) {
+    if (get().myUserId !== 'preview-user') {
+      const { error } = await sb.from('card_imports').update({ status: 'resolved', resolved_transaction_id: transactionId, updated_at: new Date().toISOString() }).eq('id', paymentId)
+      if (error) {
+        get().showToast('지출은 저장했지만 자동 수집 내역을 정리하지 못했어요')
+        return { ok: false }
+      }
+    }
+    set((s) => {
+      const pendingCardPayments = s.pendingCardPayments.filter((item) => item.id !== paymentId)
+      return { pendingCardPayments, cardInboxOpen: pendingCardPayments.length > 0 }
+    })
+    return { ok: true }
+  },
+  async createCardImportSource(name = '내 갤럭시') {
+    const { data, error } = await sb.rpc('create_card_import_source', { p_name: name })
+    const created = Array.isArray(data) ? data[0] : data
+    if (error || !created?.source_id || !created?.import_token) {
+      console.error(error)
+      get().showToast('연결키 생성 실패 (SQL v11 적용을 확인해주세요)')
+      return { ok: false }
+    }
+    const source = { id: created.source_id, name, createdAt: new Date().toISOString(), lastSeenAt: null }
+    set((s) => ({ cardImportSources: [source, ...s.cardImportSources] }))
+    return {
+      ok: true,
+      token: created.import_token,
+      endpoint: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/card-import`,
+    }
+  },
+  async removeCardImportSource(sourceId) {
+    const { error } = await sb.from('card_import_sources').delete().eq('id', sourceId)
+    if (error) {
+      get().showToast('연결 해제에 실패했어요')
+      return { ok: false }
+    }
+    set((s) => ({ cardImportSources: s.cardImportSources.filter((source) => source.id !== sourceId) }))
+    get().showToast('Android 연결을 해제했어요')
+    return { ok: true }
   },
 
   categoryScope() {

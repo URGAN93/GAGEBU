@@ -14,6 +14,7 @@ export default function TxModal() {
   const txSheetOpen = useAppStore((s) => s.txSheetOpen)
   const editingTxId = useAppStore((s) => s.editingTxId)
   const editingInstMonth = useAppStore((s) => s.editingInstMonth)
+  const transactionDraft = useAppStore((s) => s.transactionDraft)
   const closeTxSheet = useAppStore((s) => s.closeTxSheet)
   const transactions = useAppStore((s) => s.transactions)
   const livingCategories = useAppStore((s) => s.livingCategories)
@@ -26,6 +27,7 @@ export default function TxModal() {
   const deleteTransaction = useAppStore((s) => s.deleteTransaction)
   const addBonusToAllowance = useAppStore((s) => s.addBonusToAllowance)
   const findCatPool = useAppStore((s) => s.findCatPool)
+  const resolveCardPayment = useAppStore((s) => s.resolveCardPayment)
 
   const [selectedType, setSelectedType] = useState('living')
   const [selectedCat, setSelectedCat] = useState(null)
@@ -72,9 +74,9 @@ export default function TxModal() {
 
     const type = editing ? (editing.type === 'irregular' ? 'living' : editing.type) : 'living'
     setSelectedType(type)
-    setFAmount(editing ? String(editing.amount) : '')
-    setFDate(editing ? editing.date : selectedCalDate || todayKST())
-    setFInstallment(editing && editing.installmentCount > 1 ? String(editing.installmentCount) : '')
+    setFAmount(editing ? String(editing.amount) : transactionDraft ? String(transactionDraft.amount) : '')
+    setFDate(editing ? editing.date : transactionDraft?.date || selectedCalDate || todayKST())
+    setFInstallment(editing && editing.installmentCount > 1 ? String(editing.installmentCount) : transactionDraft?.installmentCount ? String(transactionDraft.installmentCount) : '')
 
     if (type === 'transfer') {
       setSelectedTo(editing ? editing.toId : null)
@@ -92,11 +94,11 @@ export default function TxModal() {
       setFMerchant(editing ? editing.merchant : '')
       setFSubcat(editing ? editing.subcat || '' : '')
       setSelectedCat(editing ? editing.categoryId : null)
-      setSelectedPay(editing ? editing.payMethod || null : null)
+      setSelectedPay(editing ? editing.payMethod || null : transactionDraft?.payMethod || null)
       setSelectedTo(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txSheetOpen, editingTxId, editingInstMonth])
+  }, [txSheetOpen, editingTxId, editingInstMonth, transactionDraft])
 
   // sheet 엘리먼트 자체는 항상 DOM에 남겨두고 'show' 클래스만 토글한다 (원본과 동일한 슬라이드업/다운 트랜지션을 위해).
   const isTransfer = selectedType === 'transfer'
@@ -192,6 +194,7 @@ export default function TxModal() {
       }
 
       const result = await submitTransaction(editingTxId, payload)
+      if (result.ok && transactionDraft?.pendingPaymentId) await resolveCardPayment(transactionDraft.pendingPaymentId, result.id)
       closeTxSheet()
 
       // 추가수입(상여금/연주비/기타) 카테고리로 신규 수입을 넣었으면, 개인용돈에 몇 %를 적립할지 매번 물어본다 (일회성)

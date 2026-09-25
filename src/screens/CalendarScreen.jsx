@@ -4,6 +4,7 @@ import { expandMonthTx, fmtMan, monthKey, todayKST } from '../lib/calc.js'
 import { holidayName, loadHolidays } from '../data/holidays.js'
 import { useSwipeMonth } from '../hooks/useSwipeMonth.js'
 import TxRow from '../components/TxRow.jsx'
+import CardImportInbox from '../components/CardImportInbox.jsx'
 
 const DOW = ['월', '화', '수', '목', '금', '토', '일']
 
@@ -79,6 +80,7 @@ export default function CalendarScreen() {
 
   return (
     <div className="col-calendar" id="colCalendar">
+      <CardImportInbox />
       <div className="calendar-wrap">
         <div ref={areaRef}>
         <div className="cal-grid" ref={dragRef}>

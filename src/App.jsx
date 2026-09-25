@@ -20,9 +20,11 @@ function App() {
   const bootstrap = useAppStore((s) => s.bootstrap)
   const activeCol = useAppStore((s) => s.activeCol)
   const startupError = useAppStore((s) => s.startupError)
+  const loadCardImportPreview = useAppStore((s) => s.loadCardImportPreview)
+  const cardImportPreview = import.meta.env.DEV && new URLSearchParams(location.search).get('preview') === 'card-inbox'
 
   useEffect(() => {
-    if (authStatus !== 'ready') return
+    if (authStatus !== 'ready' || cardImportPreview) return
     const refresh = () => {
       if (document.visibilityState === 'visible') useAppStore.getState().refreshFinancialState()
     }
@@ -36,9 +38,13 @@ function App() {
       document.removeEventListener('visibilitychange', refresh)
       clearInterval(timer)
     }
-  }, [authStatus])
+  }, [authStatus, cardImportPreview])
 
   useEffect(() => {
+    if (cardImportPreview) {
+      loadCardImportPreview()
+      return undefined
+    }
     checkSession()
     const { data: sub } = sb.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') bootstrap()
@@ -46,7 +52,7 @@ function App() {
     })
     return () => sub.subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [cardImportPreview, checkSession, bootstrap, loadCardImportPreview])
 
   useEffect(() => {
     if (!toast) return

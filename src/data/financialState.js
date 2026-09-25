@@ -1,5 +1,5 @@
 import { sb } from './supabaseClient.js'
-import { rowToFixed, rowToFixedRateChange, rowToIrregular, rowToRateChange, rowToTx, rowToLivingCat, rowToBudgetChange, rowToBonusCredit } from './converters.js'
+import { rowToFixed, rowToFixedRateChange, rowToIrregular, rowToRateChange, rowToTx, rowToLivingCat, rowToBudgetChange, rowToBonusCredit, rowToCardImport } from './converters.js'
 
 export async function loadHouseholdAllocations(household) {
   if (!household) return { householdAllocations: [], allocationsError: null }
@@ -27,5 +27,8 @@ export async function loadFinancialState(household) {
   const failure = results.find((r) => r.error)
   if (failure) throw failure.error
   const allocations = await loadHouseholdAllocations(household)
-  return { ...Object.fromEntries(tables.map(([key, , convert], i) => [key, results[i].data.map(convert)])), ...allocations }
+  const refreshed = { ...Object.fromEntries(tables.map(([key, , convert], i) => [key, results[i].data.map(convert)])), ...allocations }
+  const { data: importRows, error: importError } = await sb.from('card_imports').select('*').eq('status', 'pending').order('occurred_at', { ascending: false })
+  if (!importError) refreshed.pendingCardPayments = (importRows || []).map(rowToCardImport)
+  return refreshed
 }

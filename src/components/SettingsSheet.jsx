@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore.js'
 import { fmt, isFixedActiveNow, nowMonthKey, monthKey, fixedAmountForMonth } from '../lib/calc.js'
 import { useDragReorder } from '../hooks/useDragReorder.js'
 import { pushSupported } from '../lib/push.js'
+import CardImportSettings from './CardImportSettings.jsx'
 
 function useDraft() {
   const [draft, setDraft] = useState({})
@@ -386,6 +387,8 @@ export default function SettingsSheet() {
           + 결제수단 추가
         </button>
       </div>
+
+      <CardImportSettings />
 
       {household && (
         <div className="settings-group">
