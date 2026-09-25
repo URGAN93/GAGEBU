@@ -280,6 +280,10 @@
   .sheet h3{ margin:0 0 16px 0; font-family:'Pretendard', sans-serif; font-weight:800; letter-spacing:-0.3px; font-size:19px; }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; letter-spacing:0.3px; }
+  .field-label-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .field-label-row label{ margin-bottom:0; }
+  .field-label-row.direct-input-label{ margin-top:8px; color:var(--ink-soft); font-size:11px; font-weight:600; }
+  .text-input-done{ border:0; border-radius:8px; padding:5px 10px; background:var(--ink); color:var(--paper); font-family:'Pretendard'; font-size:11px; font-weight:700; cursor:pointer; }
   .field input, .field select{ width:100%; padding:12px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'Pretendard'; font-size:15px; color:var(--ink); }
   .field input:focus, .field select:focus{ outline:2px solid var(--gold-soft); outline-offset:1px; }
   .amount-display{ display:block; width:100%; text-align:right; -webkit-appearance:none; appearance:none; padding:14px 13px; border-radius:10px; border:1px solid var(--line); background:#fff; font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:700; color:var(--ink); cursor:pointer; }

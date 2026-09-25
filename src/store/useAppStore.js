@@ -164,14 +164,14 @@ export const useAppStore = create((set, get) => ({
   },
   async ignoreCardPayment(paymentId) {
     if (get().myUserId !== 'preview-user') {
-      const { error } = await sb.from('card_imports').update({ status: 'ignored', updated_at: new Date().toISOString() }).eq('id', paymentId)
+      const { error } = await sb.from('card_imports').delete().eq('id', paymentId)
       if (error) {
         get().showToast('제외 처리에 실패했어요')
         return { ok: false }
       }
     }
     set((s) => ({ pendingCardPayments: s.pendingCardPayments.filter((item) => item.id !== paymentId), cardInboxOpen: s.pendingCardPayments.length > 1 }))
-    get().showToast('자동 수집 내역에서 제외했어요')
+    get().showToast('자동 수집 내역을 삭제했어요')
     return { ok: true }
   },
   async resolveCardPayment(paymentId, transactionId) {

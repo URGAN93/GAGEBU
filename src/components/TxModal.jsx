@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { elapsedMonths, installmentBaseAmount, fmt, todayKST } from '../lib/calc.js'
 import { appendDigit, backspaceAmount, toggleSign, formatAmountDisplay } from '../lib/amountInput.js'
@@ -42,6 +42,8 @@ export default function TxModal() {
   const [bonusPrompt, setBonusPrompt] = useState(null)
   const [bonusPercentInput, setBonusPercentInput] = useState('10')
   const [amountKeypadOpen, setAmountKeypadOpen] = useState(false)
+  const merchantInputRef = useRef(null)
+  const subcatInputRef = useRef(null)
 
   const editing = editingTxId ? transactions.find((t) => t.id === editingTxId) : null
 
@@ -258,8 +260,12 @@ export default function TxModal() {
           <>
             {!isTransfer && (
               <div className="field">
-                <label>가맹점 / 내용</label>
+                <div className="field-label-row">
+                  <label>가맹점 / 내용</label>
+                  <button type="button" className="text-input-done" onClick={() => merchantInputRef.current?.blur()}>확인</button>
+                </div>
                 <input
+                  ref={merchantInputRef}
                   type="text"
                   placeholder="예) 스타벅스"
                   enterKeyHint="done"
@@ -310,16 +316,22 @@ export default function TxModal() {
                   ))}
                 </div>
                 {(isIncome || isSettlement) && (
-                  <input
-                    type="text"
-                    placeholder="직접 입력도 가능"
-                    enterKeyHint="done"
-                    style={{ marginTop: 8 }}
-                    value={fSubcat}
-                    onFocus={closeAmountKeypad}
-                    onKeyDown={closeTextKeyboard}
-                    onChange={(e) => setFSubcat(e.target.value)}
-                  />
+                  <>
+                    <div className="field-label-row direct-input-label">
+                      <span>직접 입력</span>
+                      <button type="button" className="text-input-done" onClick={() => subcatInputRef.current?.blur()}>확인</button>
+                    </div>
+                    <input
+                      ref={subcatInputRef}
+                      type="text"
+                      placeholder="직접 입력도 가능"
+                      enterKeyHint="done"
+                      value={fSubcat}
+                      onFocus={closeAmountKeypad}
+                      onKeyDown={closeTextKeyboard}
+                      onChange={(e) => setFSubcat(e.target.value)}
+                    />
+                  </>
                 )}
               </div>
             )}
