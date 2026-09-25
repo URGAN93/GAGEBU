@@ -42,6 +42,8 @@ export default function TxModal() {
   const [bonusPrompt, setBonusPrompt] = useState(null)
   const [bonusPercentInput, setBonusPercentInput] = useState('10')
   const [amountKeypadOpen, setAmountKeypadOpen] = useState(false)
+  const [textKeyboardTarget, setTextKeyboardTarget] = useState(null)
+  const [keyboardInset, setKeyboardInset] = useState(0)
   const merchantInputRef = useRef(null)
   const subcatInputRef = useRef(null)
 
@@ -49,8 +51,38 @@ export default function TxModal() {
 
   // 시트가 닫히면 키패드도 같이 닫는다. 열릴 때 자동으로는 안 띄우고, 금액 칸을 탭해야 뜬다.
   useEffect(() => {
-    if (!txSheetOpen) setAmountKeypadOpen(false)
+    if (!txSheetOpen) {
+      setAmountKeypadOpen(false)
+      setTextKeyboardTarget(null)
+      setKeyboardInset(0)
+    }
   }, [txSheetOpen])
+
+  // 모바일 브라우저의 실제 키보드 높이를 따라 확인 바를 키보드 바로 위에 붙인다.
+  useEffect(() => {
+    if (!textKeyboardTarget) return undefined
+
+    const viewport = window.visualViewport
+    let frameId
+    const updateKeyboardInset = () => {
+      window.cancelAnimationFrame(frameId)
+      frameId = window.requestAnimationFrame(() => {
+        const visibleBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight
+        setKeyboardInset(Math.max(0, Math.round(window.innerHeight - visibleBottom)))
+      })
+    }
+
+    updateKeyboardInset()
+    viewport?.addEventListener('resize', updateKeyboardInset)
+    viewport?.addEventListener('scroll', updateKeyboardInset)
+    window.addEventListener('resize', updateKeyboardInset)
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      viewport?.removeEventListener('resize', updateKeyboardInset)
+      viewport?.removeEventListener('scroll', updateKeyboardInset)
+      window.removeEventListener('resize', updateKeyboardInset)
+    }
+  }, [textKeyboardTarget])
 
   // 커스텀 금액 키패드가 열린 채로 다른 입력칸(가맹점/날짜 등)을 탭하면, 그 칸의 실제 키보드가 뜨면서
   // 화면 하단에 고정된 키패드와 겹쳐 탭이 먹통이 될 수 있다 — 다른 필드에 포커스가 가면 먼저 닫는다.
@@ -58,8 +90,21 @@ export default function TxModal() {
     setAmountKeypadOpen(false)
   }
 
+  function finishTextInput() {
+    const input = textKeyboardTarget === 'subcat' ? subcatInputRef.current : merchantInputRef.current
+    input?.blur()
+    setTextKeyboardTarget(null)
+    setKeyboardInset(0)
+  }
+
+  function leaveTextInput(e) {
+    if (e.relatedTarget?.closest?.('.text-keyboard-accessory')) return
+    setTextKeyboardTarget(null)
+    setKeyboardInset(0)
+  }
+
   function closeTextKeyboard(e) {
-    if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.currentTarget.blur()
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) finishTextInput()
   }
 
   // 시트가 열릴 때(또는 편집 대상이 바뀔 때) 폼을 원본 openSheet()와 동일한 규칙으로 채운다.
@@ -260,10 +305,7 @@ export default function TxModal() {
           <>
             {!isTransfer && (
               <div className="field">
-                <div className="field-label-row">
-                  <label>가맹점 / 내용</label>
-                  <button type="button" className="text-input-done" onClick={() => merchantInputRef.current?.blur()}>확인</button>
-                </div>
+                <label>가맹점 / 내용</label>
                 <input
                   ref={merchantInputRef}
                   type="text"
@@ -271,7 +313,11 @@ export default function TxModal() {
                   enterKeyHint="done"
                   style={{ textAlign: 'right' }}
                   value={fMerchant}
-                  onFocus={closeAmountKeypad}
+                  onFocus={() => {
+                    closeAmountKeypad()
+                    setTextKeyboardTarget('merchant')
+                  }}
+                  onBlur={leaveTextInput}
                   onKeyDown={closeTextKeyboard}
                   onChange={(e) => setFMerchant(e.target.value)}
                 />
@@ -316,22 +362,21 @@ export default function TxModal() {
                   ))}
                 </div>
                 {(isIncome || isSettlement) && (
-                  <>
-                    <div className="field-label-row direct-input-label">
-                      <span>직접 입력</span>
-                      <button type="button" className="text-input-done" onClick={() => subcatInputRef.current?.blur()}>확인</button>
-                    </div>
-                    <input
-                      ref={subcatInputRef}
-                      type="text"
-                      placeholder="직접 입력도 가능"
-                      enterKeyHint="done"
-                      value={fSubcat}
-                      onFocus={closeAmountKeypad}
-                      onKeyDown={closeTextKeyboard}
-                      onChange={(e) => setFSubcat(e.target.value)}
-                    />
-                  </>
+                  <input
+                    ref={subcatInputRef}
+                    type="text"
+                    placeholder="직접 입력도 가능"
+                    enterKeyHint="done"
+                    style={{ marginTop: 8 }}
+                    value={fSubcat}
+                    onFocus={() => {
+                      closeAmountKeypad()
+                      setTextKeyboardTarget('subcat')
+                    }}
+                    onBlur={leaveTextInput}
+                    onKeyDown={closeTextKeyboard}
+                    onChange={(e) => setFSubcat(e.target.value)}
+                  />
                 )}
               </div>
             )}
@@ -392,6 +437,21 @@ export default function TxModal() {
         onBackspace={() => setFAmount((cur) => backspaceAmount(cur))}
         onToggleSign={() => setFAmount((cur) => toggleSign(cur))}
       />
+
+      {textKeyboardTarget && (
+        <div className="text-keyboard-accessory" style={{ '--keyboard-inset': `${keyboardInset}px` }}>
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.preventDefault()
+              finishTextInput()
+            }}
+            onClick={finishTextInput}
+          >
+            확인
+          </button>
+        </div>
+      )}
 
       <div className={`sheet-backdrop${bonusPrompt ? ' show' : ''}`} onClick={closeBonusPrompt} />
       <div className={`sheet pin-sheet${bonusPrompt ? ' show' : ''}`}>
