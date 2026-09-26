@@ -32,10 +32,17 @@ Deno.serve(async (req) => {
   if (!source) return json({ ok: false, error: '유효하지 않은 연결키입니다' }, 401)
 
   let payload: { title?: string; text?: string; receivedAt?: string }
-  try {
-    payload = await req.json()
-  } catch {
-    return json({ ok: false, error: 'JSON 본문이 필요합니다' }, 400)
+  const contentType = req.headers.get('content-type')?.toLowerCase() || ''
+  if (contentType.includes('text/plain')) {
+    const text = (await req.text()).trim()
+    if (!text) return json({ ok: false, error: '알림 내용이 없습니다' }, 400)
+    payload = { text }
+  } else {
+    try {
+      payload = await req.json()
+    } catch {
+      return json({ ok: false, error: 'JSON 또는 일반 텍스트 본문이 필요합니다' }, 400)
+    }
   }
 
   const receivedAt = payload.receivedAt ? new Date(payload.receivedAt) : new Date()
