@@ -1,6 +1,7 @@
 // 순수 계산 헬퍼 모음 — DOM/Supabase에 의존하지 않는다.
 // 원본(vanilla index.html)에서는 전역 state 객체를 직접 읽었지만, 여기서는 필요한 배열을
 // 파라미터로 받는다 (React 스토어의 selector에서 그대로 넘겨주면 됨).
+import { parseIncomeAllowanceNote } from './income.js'
 
 export function todayKST() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -156,6 +157,36 @@ export function monthlyBudgetSummary({ transactions, livingCategories, irregular
     monthlyTotal: totalSpent + unbudgetedSpent + fixedTotal,
     expectedTotal: Math.max(totalBudget, totalSpent) + unbudgetedSpent + fixedTotal,
     totalPct: totalBudget ? Math.max(0, Math.min(100, totalSpent / totalBudget * 100)) : totalSpent > 0 ? 100 : 0 }
+}
+
+// 추가수입에서 개인용돈으로 바로 옮긴 금액은 실제 수입 기록에는 남겨두되,
+// 가계가 함께 사용할 수 있는 수입에서는 제외한다. 기존 적립 기록도 month 기준으로 반영한다.
+export function monthlyIncomeSummary({ monthTx = [], irregularEnvelopes = [], envelopeBonusCredits = [] }, vKey) {
+  const incomeTx = monthTx.filter((t) => t.type === 'income')
+  const grossIncome = incomeTx.reduce((sum, t) => sum + t.amount, 0)
+  const sharedTransactionIds = new Set()
+  const sharedAllocation = incomeTx.reduce((sum, t) => {
+    const allocation = t.installmentOverrides?.incomeAllowance
+    if (!allocation) return sum
+    sharedTransactionIds.add(t.id)
+    return sum + Math.max(0, Number(allocation.amount) || 0)
+  }, 0)
+  const allowanceIds = new Set(
+    irregularEnvelopes
+      .filter((e) => e.scope === 'personal' && e.name?.includes('용돈'))
+      .map((e) => e.id),
+  )
+  const allowanceAllocation = envelopeBonusCredits
+    .filter((b) => {
+      const linkedTransactionId = parseIncomeAllowanceNote(b.note)?.transactionId
+      return b.month === vKey && allowanceIds.has(b.envelopeId) && !sharedTransactionIds.has(linkedTransactionId)
+    })
+    .reduce((sum, b) => sum + b.amount, sharedAllocation)
+  return {
+    grossIncome,
+    allowanceAllocation,
+    householdIncome: grossIncome - allowanceAllocation,
+  }
 }
 
 // 신용카드처럼 다음 달에 청구되는 결제수단만 결제계좌 준비 대상이다.

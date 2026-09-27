@@ -22,6 +22,13 @@ import { VAPID_PUBLIC_KEY } from '../data/supabaseClient.js'
 import { urlBase64ToUint8Array, registerServiceWorker } from '../lib/push.js'
 import { importedPaymentDraft } from '../lib/cardImports.js'
 import { DEFAULT_STATE } from '../data/defaultState.js'
+import {
+  calculateIncomeAllowance,
+  encodeIncomeAllowanceNote,
+  findIncomeAllowanceCredit,
+  incomeAllowanceCreditId,
+  incomeCategoryKind,
+} from '../lib/income.js'
 
 // "이 달부터" 변경 이력(생활 예산/누적 충전액)에 공통되는 upsert 로직. id는 매칭 필드+effectiveMonth로
 // 결정되므로, 있으면 그 id로 덮어쓰고 없으면 새로 만든다 — 두 스토어 액션(upsertLivingBudgetRate/
@@ -117,7 +124,7 @@ export const useAppStore = create((set, get) => ({
   toast: null,
   nextColorIdx: 0,
   viewDate: initialViewDate(),
-  activeCol: 'calendar', // 'calendar' | 'budget' | 'analysis'
+  activeCol: 'calendar', // 'calendar' | 'budget' | 'analysis' | 'closing' | 'asset'
   selectedCalDate: null,
   txSheetOpen: false,
   editingTxId: null,
@@ -223,6 +230,8 @@ export const useAppStore = create((set, get) => ({
   // editingId가 있으면 수정, 없으면 새 거래 추가. payload.type이 최종 거래 타입.
   async submitTransaction(editingId, payload) {
     const id = editingId || Date.now().toString(36)
+    const existing = editingId ? get().transactions.find((t) => t.id === editingId) : null
+    const savedTransaction = { ...existing, id, ...payload, userId: existing?.userId || get().myUserId }
     const { error } = await sb.from('transactions').upsert(txToRow({ id, ...payload }, get().categoryScope()))
     if (error) {
       get().showToast('저장 실패, 다시 시도해주세요')
@@ -238,8 +247,8 @@ export const useAppStore = create((set, get) => ({
 
     set((s) => ({
       transactions: editingId
-        ? s.transactions.map((t) => (t.id === editingId ? { ...t, ...payload } : t))
-        : [...s.transactions, { id, ...payload }],
+        ? s.transactions.map((t) => (t.id === editingId ? savedTransaction : t))
+        : [...s.transactions, savedTransaction],
       // 새/수정된 거래의 날짜가 속한 달로 화면을 옮겨준다 (원본 동작 그대로)
       viewDate: new Date(payload.date),
     }))
@@ -264,14 +273,25 @@ export const useAppStore = create((set, get) => ({
   },
 
   async deleteTransaction(txId) {
-    const deletedType = (get().transactions.find((t) => t.id === txId) || {}).type
+    const deleted = get().transactions.find((t) => t.id === txId)
+    const deletedType = deleted?.type
+    const linkedAllowance = deletedType === 'income' ? findIncomeAllowanceCredit(deleted, get().envelopeBonusCredits) : null
     const { error } = await sb.from('transactions').delete().eq('id', txId)
     if (error) {
       get().showToast('삭제 실패, 다시 시도해주세요')
       console.error(error)
       return { ok: false }
     }
-    set((s) => ({ transactions: s.transactions.filter((t) => t.id !== txId) }))
+    if (linkedAllowance) {
+      const { error: allowanceError } = await sb.from('envelope_bonus_credits').delete().eq('id', linkedAllowance.credit.id)
+      if (allowanceError) console.error(allowanceError)
+    }
+    set((s) => ({
+      transactions: s.transactions.filter((t) => t.id !== txId),
+      envelopeBonusCredits: linkedAllowance
+        ? s.envelopeBonusCredits.filter((credit) => credit.id !== linkedAllowance.credit.id)
+        : s.envelopeBonusCredits,
+    }))
     get().showToast(
       deletedType === 'transfer' ? '이체를 삭제했어요' : deletedType === 'income' ? '수입을 삭제했어요' : deletedType === 'settlement' ? '정산을 삭제했어요' : '지출을 삭제했어요',
     )
@@ -294,6 +314,54 @@ export const useAppStore = create((set, get) => ({
     }
     set((s) => ({ envelopeBonusCredits: [...s.envelopeBonusCredits, row] }))
     get().showToast(`개인용돈에 ${amount.toLocaleString('ko-KR')}원을 적립했어요`)
+  },
+
+  // 추가수입 거래와 개인용돈 적립을 하나의 저장 흐름으로 동기화한다. 기존 팝업 방식 기록이
+  // 안전하게 매칭되면 그 행을 그대로 갱신해서 중복 적립을 만들지 않는다.
+  async syncIncomeAllowance(transaction, mode, value, existingCreditId = null) {
+    const current = existingCreditId
+      ? get().envelopeBonusCredits.find((credit) => credit.id === existingCreditId)
+      : findIncomeAllowanceCredit(transaction, get().envelopeBonusCredits)?.credit
+    const shouldAllocate = incomeCategoryKind(transaction.categoryId) === 'extra'
+    const amount = shouldAllocate ? calculateIncomeAllowance(transaction.amount, mode, value) : 0
+
+    if (!(amount > 0)) {
+      if (!current) return { ok: true }
+      const { error } = await sb.from('envelope_bonus_credits').delete().eq('id', current.id)
+      if (error) {
+        get().showToast('개인용돈 적립 변경에 실패했어요')
+        console.error(error)
+        return { ok: false }
+      }
+      set((s) => ({ envelopeBonusCredits: s.envelopeBonusCredits.filter((credit) => credit.id !== current.id) }))
+      return { ok: true }
+    }
+
+    const allowanceEnv = get().irregularEnvelopes.find((e) => e.scope === 'personal' && e.name?.includes('용돈'))
+    if (!allowanceEnv) {
+      get().showToast('개인용돈 카테고리를 찾을 수 없어요')
+      return { ok: false }
+    }
+    const row = {
+      id: current?.id || incomeAllowanceCreditId(transaction.id),
+      envelopeId: allowanceEnv.id,
+      month: transaction.date.slice(0, 7),
+      amount,
+      note: encodeIncomeAllowanceNote({
+        transactionId: transaction.id,
+        mode,
+        value,
+        label: transaction.merchant || transaction.subcat || '추가수입',
+      }),
+    }
+    const { error } = await sb.from('envelope_bonus_credits').upsert(bonusCreditToRow(row))
+    if (error) {
+      get().showToast('개인용돈 적립 변경에 실패했어요')
+      console.error(error)
+      return { ok: false }
+    }
+    set((s) => ({ envelopeBonusCredits: [...s.envelopeBonusCredits.filter((credit) => credit.id !== row.id), row] }))
+    return { ok: true, amount }
   },
 
   findCatPool(catId) {

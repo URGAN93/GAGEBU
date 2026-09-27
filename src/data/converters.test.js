@@ -91,4 +91,13 @@ describe('round-trip row <-> model', () => {
     expect(backToRow.installment_count).toBe(3)
     expect(backToRow.amount).toBe(197000)
   })
+
+  it('계정별 추가수입 id를 공통 거래 id로 변환한다', () => {
+    const model = converters.rowToTx({
+      id: 'income1', type: 'income', amount: 100000, date: '2026-09-01',
+      category_id: 'income_extra_wife-user-id',
+    })
+    expect(model.categoryId).toBe('income_extra')
+    expect(converters.txToRow(model).category_id).toBe('income_extra')
+  })
 })

@@ -8,6 +8,7 @@ import NavBar from './components/NavBar.jsx'
 import CalendarScreen from './screens/CalendarScreen.jsx'
 import BudgetScreen from './screens/BudgetScreen.jsx'
 import AnalysisScreen from './screens/AnalysisScreen.jsx'
+import ClosingScreen from './screens/ClosingScreen.jsx'
 import AssetScreen from './screens/AssetScreen.jsx'
 import TxModal from './components/TxModal.jsx'
 import SettingsSheet from './components/SettingsSheet.jsx'
@@ -78,6 +79,7 @@ function App() {
               <CalendarScreen />
               <BudgetScreen />
               <AnalysisScreen />
+              <ClosingScreen />
               <AssetScreen />
             </div>
           </div>

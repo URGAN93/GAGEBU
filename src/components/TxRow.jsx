@@ -1,9 +1,12 @@
 import { fmt } from '../lib/calc.js'
 import { findEnvelopeName } from '../lib/selectors.js'
+import { useAppStore } from '../store/useAppStore.js'
 
 // 거래 한 줄 표시 — 캘린더 하단 리스트, 분석 탭 리스트에서 공유해서 쓴다.
 // onClick은 Phase 6(거래 추가/수정 모달)에서 실제로 연결된다 — 지금은 선택적.
 export default function TxRow({ tx, categories, onClick }) {
+  const myUserId = useAppStore((s) => s.myUserId)
+  const hasMultipleMembers = useAppStore((s) => s.householdMembers.length > 1)
   const { incomeCategories, livingCategories, irregularEnvelopes } = categories
   const d = new Date(tx.date)
   const instMonthAttr = tx.installmentIndex && tx.installmentIndex > 1 ? tx.date.slice(0, 7) : null
@@ -30,6 +33,11 @@ export default function TxRow({ tx, categories, onClick }) {
   if (tx.type === 'income') {
     const incomeCatName = findEnvelopeName('income', tx.categoryId, { incomeCategories, livingCategories, irregularEnvelopes })
     const incomeSub = tx.subcat ? ` · ${tx.subcat}` : ''
+    const ownerLabel = hasMultipleMembers && tx.userId ? ` · ${tx.userId === myUserId ? '나' : '배우자'}` : ''
+    const allocation = tx.installmentOverrides?.incomeAllowance
+    const allocationLabel = allocation?.amount > 0
+      ? ` · 용돈 ${allocation.mode === 'percent' ? `${allocation.value}%` : `${fmt(allocation.amount)}원`}`
+      : ''
     return (
       <div className="tx-item" onClick={handleClick}>
         <div className="tx-left">
@@ -37,6 +45,8 @@ export default function TxRow({ tx, categories, onClick }) {
           <span className="tx-meta">
             {d.getMonth() + 1}.{d.getDate()} · {incomeCatName}
             {incomeSub}
+            {ownerLabel}
+            {allocationLabel}
           </span>
         </div>
         <span className="tx-amt" style={{ color: 'var(--ok)' }}>

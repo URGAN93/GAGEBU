@@ -1,3 +1,5 @@
+import { incomeCategoryKind, normalizeIncomeCategoryId } from '../lib/income.js'
+
 // Supabase row ↔ 앱 모델 변환 함수들.
 // 원본(vanilla index.html)에서는 전역 state.household를 직접 읽었지만, 여기서는 household를
 // 명시적 파라미터로 받는다 — 순수 함수로 만들어야 테스트/재사용이 쉬워진다.
@@ -151,7 +153,7 @@ export function categoryHouseholdId(categoryId, { household, irregularEnvelopes,
   const env = irregularEnvelopes.find((e) => e.id === categoryId)
   if (env) return env.scope === 'household' ? (household && household.id) || null : null
   if (livingCategories.some((c) => c.id === categoryId)) return (household && household.id) || null
-  if (incomeCategories.some((c) => c.id === categoryId)) return (household && household.id) || null
+  if (incomeCategoryKind(categoryId) || incomeCategories.some((c) => c.id === categoryId)) return (household && household.id) || null
   return null
 }
 
@@ -161,7 +163,7 @@ export function rowToTx(r) {
     type: r.type,
     amount: r.amount,
     merchant: r.merchant,
-    categoryId: r.category_id,
+    categoryId: r.type === 'income' ? normalizeIncomeCategoryId(r.category_id) : r.category_id,
     subcat: r.subcat,
     payMethod: r.pay_method,
     fromId: r.from_id,
@@ -180,7 +182,7 @@ export function txToRow(t, categoryScope) {
     type: t.type,
     amount: t.amount,
     merchant: t.merchant || null,
-    category_id: t.categoryId || null,
+    category_id: t.type === 'income' ? normalizeIncomeCategoryId(t.categoryId) : t.categoryId || null,
     subcat: t.subcat || null,
     pay_method: t.payMethod || null,
     from_id: t.fromId || null,

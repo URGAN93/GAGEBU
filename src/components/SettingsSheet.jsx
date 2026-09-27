@@ -61,11 +61,12 @@ function IrregularRow({ env, draftApi, onDelete }) {
 }
 
 function IncomeRow({ cat, draftApi }) {
+  const fixedName = cat.id?.startsWith('income_extra') ? '추가수입' : cat.id?.startsWith('income_regular') ? '정기수입' : cat.name
   return (
     <div className="manage-row" data-id={cat.id}>
       <div className="manage-row-top">
         <span className="manage-dot" style={{ background: cat.color || '#999' }} />
-        <input className="mr-name" value={draftApi.get(cat, 'name')} onChange={(e) => draftApi.update(cat.id, 'name', e.target.value)} />
+        <strong className="mr-name" style={{ borderBottom: 0 }}>{fixedName}</strong>
       </div>
       <div className="mr-line">
         <label>소분류</label>

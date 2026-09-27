@@ -11,6 +11,7 @@ import {
   irregularContributions,
   isDeferredCardPayMethod,
   monthlyClosingSummary,
+  monthlyIncomeSummary,
 } from './calc.js'
 
 describe('elapsedMonths', () => {
@@ -34,6 +35,60 @@ describe('addMonths', () => {
   })
   it('rolls back into the previous year', () => {
     expect(addMonths('2026-02', -3)).toBe('2025-11')
+  })
+})
+
+describe('monthlyIncomeSummary', () => {
+  const monthTx = [
+    { type: 'income', amount: 3000000 },
+    { type: 'income', amount: 1000000 },
+    { type: 'living', amount: 200000 },
+  ]
+  const irregularEnvelopes = [
+    { id: 'allowance', name: '개인 용돈', scope: 'personal' },
+    { id: 'events', name: '경조사', scope: 'household' },
+  ]
+
+  it('기존에 추가수입에서 개인용돈으로 넘긴 금액을 가계 수입에서 제외한다', () => {
+    const result = monthlyIncomeSummary({
+      monthTx,
+      irregularEnvelopes,
+      envelopeBonusCredits: [
+        { envelopeId: 'allowance', month: '2026-09', amount: 100000 },
+        { envelopeId: 'allowance', month: '2026-09', amount: 50000 },
+      ],
+    }, '2026-09')
+    expect(result).toEqual({ grossIncome: 4000000, allowanceAllocation: 150000, householdIncome: 3850000 })
+  })
+
+  it('다른 달이나 다른 누적 카테고리의 적립은 가계 수입을 줄이지 않는다', () => {
+    const result = monthlyIncomeSummary({
+      monthTx,
+      irregularEnvelopes,
+      envelopeBonusCredits: [
+        { envelopeId: 'allowance', month: '2026-08', amount: 100000 },
+        { envelopeId: 'events', month: '2026-09', amount: 200000 },
+      ],
+    }, '2026-09')
+    expect(result).toEqual({ grossIncome: 4000000, allowanceAllocation: 0, householdIncome: 4000000 })
+  })
+
+  it('공유 수입에 기록된 배우자 용돈 배정도 같은 가계 수입에 반영하고 개인 적립과 중복 계산하지 않는다', () => {
+    const result = monthlyIncomeSummary({
+      monthTx: [
+        { id: 'wife-income', type: 'income', amount: 500000, installmentOverrides: { incomeAllowance: { amount: 100000 } } },
+      ],
+      irregularEnvelopes,
+      envelopeBonusCredits: [
+        {
+          envelopeId: 'allowance',
+          month: '2026-09',
+          amount: 100000,
+          note: JSON.stringify({ source: 'income', transactionId: 'wife-income', mode: 'percent', value: 20 }),
+        },
+      ],
+    }, '2026-09')
+    expect(result).toEqual({ grossIncome: 500000, allowanceAllocation: 100000, householdIncome: 400000 })
   })
 })
 

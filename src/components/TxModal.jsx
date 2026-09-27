@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store/useAppStore.js'
 import { elapsedMonths, installmentBaseAmount, fmt, todayKST } from '../lib/calc.js'
 import { appendDigit, backspaceAmount, toggleSign, formatAmountDisplay } from '../lib/amountInput.js'
+import {
+  calculateIncomeAllowance,
+  findIncomeAllowanceCredit,
+  incomeCategoryKind,
+  incomeCategoryLabel,
+  normalizeIncomeCategoryId,
+} from '../lib/income.js'
 import AmountKeypad from './AmountKeypad.jsx'
 
 const TYPE_BUTTONS = [
@@ -20,12 +27,14 @@ export default function TxModal() {
   const livingCategories = useAppStore((s) => s.livingCategories)
   const irregularEnvelopes = useAppStore((s) => s.irregularEnvelopes)
   const incomeCategories = useAppStore((s) => s.incomeCategories)
+  const envelopeBonusCredits = useAppStore((s) => s.envelopeBonusCredits)
+  const myUserId = useAppStore((s) => s.myUserId)
   const payMethods = useAppStore((s) => s.payMethods)
   const selectedCalDate = useAppStore((s) => s.selectedCalDate)
   const submitTransaction = useAppStore((s) => s.submitTransaction)
   const updateInstallmentOverride = useAppStore((s) => s.updateInstallmentOverride)
   const deleteTransaction = useAppStore((s) => s.deleteTransaction)
-  const addBonusToAllowance = useAppStore((s) => s.addBonusToAllowance)
+  const syncIncomeAllowance = useAppStore((s) => s.syncIncomeAllowance)
   const findCatPool = useAppStore((s) => s.findCatPool)
   const resolveCardPayment = useAppStore((s) => s.resolveCardPayment)
 
@@ -39,8 +48,9 @@ export default function TxModal() {
   const [fSubcat, setFSubcat] = useState('')
   const [fInstallment, setFInstallment] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [bonusPrompt, setBonusPrompt] = useState(null)
-  const [bonusPercentInput, setBonusPercentInput] = useState('10')
+  const [allowanceMode, setAllowanceMode] = useState('percent')
+  const [allowanceValue, setAllowanceValue] = useState('10')
+  const [allowanceCreditId, setAllowanceCreditId] = useState(null)
   const [amountKeypadOpen, setAmountKeypadOpen] = useState(false)
   const [textKeyboardTarget, setTextKeyboardTarget] = useState(null)
   const [keyboardInset, setKeyboardInset] = useState(0)
@@ -120,6 +130,7 @@ export default function TxModal() {
     }
 
     const type = editing ? (editing.type === 'irregular' ? 'living' : editing.type) : 'living'
+    const linkedAllowance = editing?.type === 'income' ? findIncomeAllowanceCredit(editing, envelopeBonusCredits) : null
     setSelectedType(type)
     setFAmount(editing ? String(editing.amount) : transactionDraft ? String(transactionDraft.amount) : '')
     setFDate(editing ? editing.date : transactionDraft?.date || selectedCalDate || todayKST())
@@ -134,7 +145,7 @@ export default function TxModal() {
     } else if (type === 'income' || type === 'settlement') {
       setFMerchant(editing ? editing.merchant || '' : '')
       setFSubcat(editing ? editing.subcat || '' : '')
-      setSelectedCat(editing ? editing.categoryId : null)
+      setSelectedCat(editing ? (editing.type === 'income' ? normalizeIncomeCategoryId(editing.categoryId) : editing.categoryId) : null)
       setSelectedPay(null)
       setSelectedTo(null)
     } else {
@@ -144,6 +155,9 @@ export default function TxModal() {
       setSelectedPay(editing ? editing.payMethod || null : transactionDraft?.payMethod || null)
       setSelectedTo(null)
     }
+    setAllowanceMode(linkedAllowance?.mode || 'percent')
+    setAllowanceValue(String(linkedAllowance?.value ?? localStorage.getItem('bonusAllowancePercent') ?? '10'))
+    setAllowanceCreditId(linkedAllowance?.credit.id || null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txSheetOpen, editingTxId, editingInstMonth, transactionDraft])
 
@@ -151,14 +165,20 @@ export default function TxModal() {
   const isTransfer = selectedType === 'transfer'
   const isIncome = selectedType === 'income'
   const isSettlement = selectedType === 'settlement'
+  const isOtherMemberIncome = isIncome && editing?.userId && editing.userId !== myUserId
 
+  const commonIncomeCategories = Array.from(new Map(incomeCategories.map((cat) => {
+    const id = normalizeIncomeCategoryId(cat)
+    return [id, { ...cat, id, name: incomeCategoryLabel(cat) || cat.name }]
+  })).values())
   const envelopeList =
     selectedType === 'income'
-      ? incomeCategories
+      ? commonIncomeCategories
       : selectedType === 'living' || selectedType === 'settlement'
         ? [...livingCategories, ...irregularEnvelopes]
         : irregularEnvelopes
   const isCombinedCat = selectedType === 'living' || selectedType === 'settlement'
+  const isExtraIncome = isIncome && incomeCategoryKind(selectedCat) === 'extra'
   const subPresets = (envelopeList.find((c) => c.id === selectedCat) || {}).subcats || []
   const selectedFrom = irregularEnvelopes[0] ? irregularEnvelopes[0].id : null
 
@@ -187,11 +207,18 @@ export default function TxModal() {
   }
 
   const amt = parseInt(fAmount, 10)
+  const allowanceNumericValue = parseFloat(allowanceValue) || 0
+  const allowanceAmount = isExtraIncome ? calculateIncomeAllowance(amt, allowanceMode, allowanceNumericValue) : 0
+  const allowanceInvalid = isExtraIncome && (
+    allowanceNumericValue < 0
+    || (allowanceMode === 'percent' && allowanceNumericValue > 100)
+    || (allowanceMode === 'amount' && allowanceNumericValue > amt)
+  )
   const submitDisabled = editingInstMonth
     ? !(amt > 0)
     : isTransfer
       ? !(amt > 0 && selectedTo && fDate && irregularEnvelopes.length > 0)
-      : !(amt > 0 && selectedCat && fDate)
+      : !(amt > 0 && selectedCat && fDate) || allowanceInvalid || isOtherMemberIncome
 
   function handleTypeClick(type) {
     setSelectedType(type)
@@ -223,7 +250,26 @@ export default function TxModal() {
           date: fDate,
         }
       } else if (isIncome) {
-        payload = { amount: parseInt(fAmount, 10), merchant: fMerchant.trim(), type: 'income', categoryId: selectedCat, subcat: fSubcat.trim(), date: fDate }
+        payload = {
+          amount: parseInt(fAmount, 10),
+          merchant: fMerchant.trim(),
+          type: 'income',
+          categoryId: selectedCat,
+          subcat: fSubcat.trim(),
+          date: fDate,
+          // 개인용돈 상세는 본인만 보되, 가계가 실제로 쓸 수 있는 수입은 부부가 같은 값으로
+          // 계산해야 하므로 배정 결과만 공유 거래의 JSON 필드에 함께 둔다.
+          installmentOverrides: isExtraIncome
+            ? {
+                incomeAllowance: {
+                  mode: allowanceMode,
+                  value: allowanceNumericValue,
+                  amount: allowanceAmount,
+                  ownerUserId: editing?.userId || myUserId,
+                },
+              }
+            : null,
+        }
       } else if (isSettlement) {
         payload = { amount: parseInt(fAmount, 10), merchant: fMerchant.trim(), type: 'settlement', categoryId: selectedCat, subcat: fSubcat.trim(), date: fDate }
       } else {
@@ -241,17 +287,24 @@ export default function TxModal() {
       }
 
       const result = await submitTransaction(editingTxId, payload)
+      if (!result.ok) return
       if (result.ok && transactionDraft?.pendingPaymentId) await resolveCardPayment(transactionDraft.pendingPaymentId, result.id)
-      closeTxSheet()
-
-      // 추가수입(상여금/연주비/기타) 카테고리로 신규 수입을 넣었으면, 개인용돈에 몇 %를 적립할지 매번 물어본다 (일회성)
-      if (result.ok && !editingTxId && isIncome) {
-        const incomeCatName = (incomeCategories.find((c) => c.id === payload.categoryId) || {}).name
-        if (incomeCatName === '추가수입') {
-          setBonusPercentInput(localStorage.getItem('bonusAllowancePercent') || '10')
-          setBonusPrompt({ amount: payload.amount, month: payload.date.slice(0, 7), merchant: payload.merchant || payload.subcat || '추가수입' })
+      if (result.ok && (isIncome || editing?.type === 'income')) {
+        if (isExtraIncome && allowanceMode === 'percent') localStorage.setItem('bonusAllowancePercent', allowanceValue || '0')
+        const allowanceResult = await syncIncomeAllowance(
+          { id: result.id, ...payload },
+          allowanceMode,
+          isExtraIncome ? allowanceNumericValue : 0,
+          allowanceCreditId,
+        )
+        // 수입 거래 자체는 이미 저장된 상태다. 적립 저장만 실패했을 때 시트를 그대로 두면
+        // 사용자가 다시 눌러 새 수입을 중복 생성할 수 있으므로 닫고 실패 토스트를 유지한다.
+        if (!allowanceResult.ok) {
+          closeTxSheet()
+          return
         }
       }
+      closeTxSheet()
     } finally {
       setSubmitting(false)
     }
@@ -263,26 +316,15 @@ export default function TxModal() {
     closeTxSheet()
   }
 
-  const bonusPercent = parseFloat(bonusPercentInput)
-  const bonusAmount = bonusPrompt && bonusPercent > 0 ? Math.round(bonusPrompt.amount * (bonusPercent / 100)) : 0
-
-  function closeBonusPrompt() {
-    setBonusPrompt(null)
-  }
-
-  async function handleBonusConfirm() {
-    if (!bonusPrompt || !(bonusAmount > 0)) return
-    localStorage.setItem('bonusAllowancePercent', bonusPercentInput)
-    await addBonusToAllowance(bonusAmount, bonusPrompt.month, `${bonusPrompt.merchant} ${bonusPercentInput}%`)
-    setBonusPrompt(null)
-  }
-
   return (
     <>
       <div className={`sheet-backdrop${txSheetOpen ? ' show' : ''}`} onClick={closeTxSheet} />
       <div className={`sheet${txSheetOpen ? ' show' : ''}`}>
         <div className="sheet-handle" />
         <h3>{sheetTitle}</h3>
+        {isOtherMemberIncome && (
+          <div className="income-owner-notice">배우자가 등록한 수입이에요. 개인용돈 배정까지 연결되어 있어 등록한 사람만 수정할 수 있어요.</div>
+        )}
 
         {!editingInstMonth && (
           <div className="type-toggle">
@@ -348,6 +390,31 @@ export default function TxModal() {
                     )
                   })}
                 </div>
+              </div>
+            )}
+
+            {isExtraIncome && !isOtherMemberIncome && (
+              <div className="field income-allowance-field">
+                <label>이 수입에서 개인용돈으로 적립</label>
+                <div className="income-allowance-control">
+                  <div className="income-allowance-mode" aria-label="개인용돈 적립 방식">
+                    <button type="button" className={allowanceMode === 'amount' ? 'active' : ''} onClick={() => setAllowanceMode('amount')}>원</button>
+                    <button type="button" className={allowanceMode === 'percent' ? 'active' : ''} onClick={() => setAllowanceMode('percent')}>%</button>
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max={allowanceMode === 'percent' ? '100' : amt > 0 ? String(amt) : undefined}
+                    value={allowanceValue}
+                    onFocus={closeAmountKeypad}
+                    onChange={(e) => setAllowanceValue(e.target.value)}
+                  />
+                </div>
+                <div className="income-allowance-preview">
+                  개인용돈 {fmt(allowanceAmount)}원 · 가계 수입 {fmt(Math.max(0, (amt || 0) - allowanceAmount))}원
+                </div>
+                {allowanceInvalid && <div className="income-allowance-error">수입 금액 안에서 0~{allowanceMode === 'percent' ? '100%' : `${fmt(amt)}원`}으로 입력해주세요.</div>}
               </div>
             )}
 
@@ -421,9 +488,9 @@ export default function TxModal() {
         <button className="sheet-submit" disabled={submitDisabled || submitting} onClick={handleSubmit}>
           {submitLabel}
         </button>
-        {!editingInstMonth && editingTxId && (
+        {!editingInstMonth && editingTxId && !isOtherMemberIncome && (
           <button className="sheet-delete" onClick={handleDelete}>
-            이 지출 삭제하기
+            이 {isIncome ? '수입' : isSettlement ? '정산' : isTransfer ? '이체' : '지출'} 삭제하기
           </button>
         )}
       </div>
@@ -453,27 +520,6 @@ export default function TxModal() {
         </div>
       )}
 
-      <div className={`sheet-backdrop${bonusPrompt ? ' show' : ''}`} onClick={closeBonusPrompt} />
-      <div className={`sheet pin-sheet${bonusPrompt ? ' show' : ''}`}>
-        <div className="sheet-handle" />
-        <h3>개인용돈 적립</h3>
-        {bonusPrompt && (
-          <>
-            <p className="bonus-desc">{fmt(bonusPrompt.amount)}원 수입 중 몇 %를 개인용돈에 적립할까요?</p>
-            <div className="field">
-              <label>적립 비율(%)</label>
-              <input type="number" inputMode="decimal" min="0" max="100" value={bonusPercentInput} onChange={(e) => setBonusPercentInput(e.target.value)} />
-            </div>
-            <div className="bonus-preview">{fmt(bonusAmount)}원 적립돼요</div>
-            <button className="sheet-submit" disabled={!(bonusAmount > 0)} onClick={handleBonusConfirm}>
-              적립하기
-            </button>
-            <button className="sheet-delete" style={{ marginTop: 10 }} onClick={closeBonusPrompt}>
-              건너뛰기
-            </button>
-          </>
-        )}
-      </div>
     </>
   )
 }
