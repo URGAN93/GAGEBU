@@ -31,9 +31,9 @@ export default function ClosingScreen() {
   const nextMonthLabel = `${Number(nextVKey.slice(5, 7))}월`
   const otherLabel = (() => {
     try {
-      return localStorage.getItem('payOwnerOtherLabel') || '배우자'
+      return localStorage.getItem('payOwnerOtherLabel') || '김다솔'
     } catch {
-      return '배우자'
+      return '김다솔'
     }
   })()
 
@@ -85,30 +85,52 @@ export default function ClosingScreen() {
               <div className="payment-ready-row detail">
                 <span>정산금 {fmt(summary.settlementReserve)} · 내 용돈 카드 {fmt(summary.ownerAllowanceReserve)}</span>
               </div>
-              {householdMembers.length > 1 && (
-                <>
-                  <div className="closing-section-title">배우자 정산</div>
-                  <div className="closing-spouse-summary">
-                    <div>
-                      <span>{otherLabel}가 결제한 가계 사용분</span>
-                      <b>{fmt(summary.spouseUsage)}원</b>
-                    </div>
-                    <small>아래 결제수단에서 ‘{otherLabel}’를 선택하면 카드사별 내역을 확인할 수 있어요.</small>
-                  </div>
-                </>
-              )}
               <div className="closing-section-title">{nextMonthLabel} 생활 준비</div>
               <div className="payment-ready-row">
-                <span>{nextMonthLabel} 현금성 고정지출</span>
+                <span>현금성 고정지출</span>
                 <b>{fmt(summary.nextImmediateFixed)}원</b>
               </div>
+              {householdMembers.length > 1 && (
+                <div className="payment-ready-row">
+                  <span>{otherLabel}이 결제한 가계 사용분</span>
+                  <b>{fmt(summary.spouseUsage)}원</b>
+                </div>
+              )}
+              {summary.nextSpouseAllowance > 0 && (
+                <div className="payment-ready-row">
+                  <span>{otherLabel} 용돈</span>
+                  <b>{fmt(summary.nextSpouseAllowance)}원</b>
+                </div>
+              )}
+              {summary.nextOwnerAllowance > 0 && (
+                <div className="payment-ready-row">
+                  <span>심성민 용돈</span>
+                  <b>{fmt(summary.nextOwnerAllowance)}원</b>
+                </div>
+              )}
               <div className="payment-ready-row">
-                <span>{nextMonthLabel} 나·배우자 용돈</span>
-                <b>{fmt(summary.nextAllowance)}원</b>
-              </div>
-              <div className="payment-ready-row">
-                <span>{nextMonthLabel} 경조사비</span>
+                <span>경조사비</span>
                 <b>{fmt(summary.nextEventFund)}원</b>
+              </div>
+              <div className="payment-ready-row total">
+                <span>{nextMonthLabel} 생활 준비 합계</span>
+                <b>{fmt(summary.nextLivingPrepTotal)}원</b>
+              </div>
+            </div>
+            <div className="closing-reserve-composition">
+              <div>
+                <span>내 카드 결제 추가 입금</span>
+                <b>{fmt(summary.cardTopUp)}원</b>
+              </div>
+              <i>+</i>
+              <div>
+                <span>{nextMonthLabel} 생활 준비</span>
+                <b>{fmt(summary.nextLivingPrepTotal)}원</b>
+              </div>
+              <i>=</i>
+              <div className="result">
+                <span>다음 월급에서 따로 둘 돈</span>
+                <b>{fmt(summary.salaryReserveTotal)}원</b>
               </div>
             </div>
             <div className="payment-ready-carry">

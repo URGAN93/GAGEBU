@@ -61,8 +61,8 @@
   .month-label small{ display:block; font-family:'Pretendard'; font-weight:500; font-size:12.5px; color:var(--ink-soft); opacity:0.65; letter-spacing:1.5px; margin-bottom:4px; }
   .month-nav{ display:flex; gap:6px; }
   .month-nav button{ width:30px;height:30px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--ink); font-size:14px; cursor:pointer; }
-  .header-settings{ margin-left:auto; width:34px; height:34px; padding:7px; border:1px solid var(--line); border-radius:50%; background:transparent; color:var(--ink-soft); cursor:pointer; }
-  .header-settings svg{ display:block; width:100%; height:100%; fill:currentColor; }
+  .header-settings{ display:grid; place-items:center; margin-left:auto; width:34px; height:34px; padding:0; border:1px solid var(--line); border-radius:50%; background:transparent; color:var(--ink-soft); cursor:pointer; }
+  .header-settings svg{ display:block; width:18px; height:18px; fill:currentColor; }
 
   .passbook{
     background:linear-gradient(155deg, var(--ink) 0%, var(--ink-soft) 100%);
@@ -255,17 +255,28 @@
   .closing-card-equation i{ align-self:center; color:var(--ink-soft); font-style:normal; font-size:16px; font-weight:800; opacity:.45; }
   .closing-card-equation .result{ border-color:rgba(62,122,85,.3); background:rgba(62,122,85,.1); }
   .closing-card-equation .result span,.closing-card-equation .result b{ color:var(--ok); font-weight:800; }
-  .closing-spouse-summary{ margin:5px 0 7px; padding:11px 12px; border:1px solid rgba(185,138,46,.25); border-radius:10px; background:rgba(185,138,46,.08); }
-  .closing-spouse-summary > div{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12.5px; }
-  .closing-spouse-summary b{ font-family:'IBM Plex Mono',monospace; font-size:15px; font-variant-numeric:tabular-nums; }
-  .closing-spouse-summary small{ display:block; margin-top:6px; color:var(--ink-soft); font-size:10.5px; line-height:1.45; opacity:.68; }
+  .closing-reserve-composition{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1.12fr); align-items:center; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .closing-reserve-composition > div{ display:flex; min-width:0; flex-direction:column; align-items:flex-end; gap:4px; padding:10px 11px; border-radius:9px; background:rgba(255,255,255,.58); text-align:right; }
+  .closing-reserve-composition span{ color:var(--ink-soft); font-size:10.5px; }
+  .closing-reserve-composition b{ font-family:'IBM Plex Mono',monospace; font-size:14px; overflow-wrap:anywhere; }
+  .closing-reserve-composition i{ color:var(--ink-soft); font-style:normal; font-weight:800; opacity:.45; }
+  .closing-reserve-composition .result{ background:rgba(62,122,85,.1); }
+  .closing-reserve-composition .result span,.closing-reserve-composition .result b{ color:var(--ok); font-weight:800; }
   .payment-ready-carry{ margin-top:8px; padding:11px 12px; border-radius:9px; background:rgba(185,138,46,.12); color:var(--ink-soft); font-size:12.5px; font-weight:700; }
   .payment-ready-carry b{ font-family:'IBM Plex Mono',monospace; font-size:15px; font-variant-numeric:tabular-nums; }
   .payment-ready-note{ margin-top:8px; color:var(--ink-soft); font-size:10.5px; line-height:1.45; opacity:.68; }
 
   @media (max-width:560px){
-    .closing-card-equation{ grid-template-columns:1fr; gap:5px; }
-    .closing-card-equation i{ transform:rotate(90deg); line-height:12px; }
+    .closing-card-equation{ grid-template-columns:1fr; gap:0; padding:3px 9px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.52); }
+    .closing-card-equation > div{ flex-direction:row; align-items:center; justify-content:space-between; padding:9px 2px; border:0; border-radius:0; background:transparent; text-align:left; }
+    .closing-card-equation > div:nth-of-type(n+2){ border-top:1px solid var(--line); }
+    .closing-card-equation > i{ display:none; }
+    .closing-card-equation .result{ margin-top:2px; border-top:1px solid rgba(62,122,85,.3); background:transparent; }
+    .closing-reserve-composition{ grid-template-columns:1fr; gap:0; padding:9px 11px; border:1px solid var(--line); border-radius:10px; }
+    .closing-reserve-composition > div{ flex-direction:row; align-items:center; justify-content:space-between; padding:8px 0; background:transparent; text-align:left; }
+    .closing-reserve-composition > div:nth-of-type(n+2){ border-top:1px solid var(--line); }
+    .closing-reserve-composition > i{ display:none; }
+    .closing-reserve-composition .result{ margin-top:3px; padding-top:10px; border-top:1px solid rgba(62,122,85,.3); background:transparent; }
     .analysis-subcategory-content{ grid-template-columns:1fr; justify-items:center; }
     .analysis-subcategory-legend{ width:100%; }
   }

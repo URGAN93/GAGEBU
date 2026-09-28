@@ -237,9 +237,17 @@ export function monthlyClosingSummary({
   const nextMonth = addMonths(currentMonth, 1)
   const nextImmediateFixed = nextFixed.filter((f) => belongsToOwnerFixed(f) && !isDeferredCardPayMethod(f.payMethod))
     .reduce((sum, f) => sum + fixedAmountForMonth(fixedRateChanges, f, nextMonth), 0)
-  const nextAllowance = nextEnvelopeFixed.filter((f) => f.name?.includes('용돈')).reduce((sum, f) => sum + f.amount, 0)
+  const nextAllowanceRows = nextEnvelopeFixed.filter((f) => f.name?.includes('용돈'))
+  const nextSpouseAllowance = nextAllowanceRows
+    .filter((f) => f.name?.startsWith('배우자 ·'))
+    .reduce((sum, f) => sum + f.amount, 0)
+  const nextOwnerAllowance = nextAllowanceRows
+    .filter((f) => !f.name?.startsWith('배우자 ·'))
+    .reduce((sum, f) => sum + f.amount, 0)
+  const nextAllowance = nextOwnerAllowance + nextSpouseAllowance
   const nextEventFund = nextEnvelopeFixed.filter((f) => f.name?.includes('경조사')).reduce((sum, f) => sum + f.amount, 0)
-  const salaryReserveTotal = cardTopUp + spouseUsage + nextImmediateFixed + nextAllowance + nextEventFund
+  const nextLivingPrepTotal = spouseUsage + nextImmediateFixed + nextAllowance + nextEventFund
+  const salaryReserveTotal = cardTopUp + nextLivingPrepTotal
   const closingPreparedTotal = reservedTotal + salaryReserveTotal
 
   return {
@@ -250,8 +258,11 @@ export function monthlyClosingSummary({
     reservedTotal,
     spouseUsage,
     nextImmediateFixed,
+    nextOwnerAllowance,
+    nextSpouseAllowance,
     nextAllowance,
     nextEventFund,
+    nextLivingPrepTotal,
     salaryReserveTotal,
     closingPreparedTotal,
     isOwnerView,
