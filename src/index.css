@@ -248,11 +248,35 @@
   .payment-ready-row{ display:flex; justify-content:space-between; gap:12px; padding:5px 0; color:var(--ink); font-size:12.5px; }
   .payment-ready-row.total{ padding-top:8px; border-top:1px dashed var(--line); }
   .payment-ready-row.detail{ padding:2px 0 2px 12px; color:var(--ink-soft); font-size:11.5px; }
+  .closing-card-equation{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1.08fr); align-items:stretch; gap:8px; margin:5px 0 7px; }
+  .closing-card-equation > div{ display:flex; min-width:0; flex-direction:column; align-items:flex-end; justify-content:center; gap:4px; padding:11px 10px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.64); text-align:right; }
+  .closing-card-equation span{ color:var(--ink-soft); font-size:10.5px; }
+  .closing-card-equation b{ font-family:'IBM Plex Mono',monospace; font-size:14px; overflow-wrap:anywhere; }
+  .closing-card-equation i{ align-self:center; color:var(--ink-soft); font-style:normal; font-size:16px; font-weight:800; opacity:.45; }
+  .closing-card-equation .result{ border-color:rgba(62,122,85,.3); background:rgba(62,122,85,.1); }
+  .closing-card-equation .result span,.closing-card-equation .result b{ color:var(--ok); font-weight:800; }
+  .closing-reserve-composition{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1.12fr); align-items:center; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .closing-reserve-composition > div{ display:flex; min-width:0; flex-direction:column; align-items:flex-end; gap:4px; padding:10px 11px; border-radius:9px; background:rgba(255,255,255,.58); text-align:right; }
+  .closing-reserve-composition span{ color:var(--ink-soft); font-size:10.5px; }
+  .closing-reserve-composition b{ font-family:'IBM Plex Mono',monospace; font-size:14px; overflow-wrap:anywhere; }
+  .closing-reserve-composition i{ color:var(--ink-soft); font-style:normal; font-weight:800; opacity:.45; }
+  .closing-reserve-composition .result{ background:rgba(62,122,85,.1); }
+  .closing-reserve-composition .result span,.closing-reserve-composition .result b{ color:var(--ok); font-weight:800; }
   .payment-ready-carry{ margin-top:8px; padding:11px 12px; border-radius:9px; background:rgba(185,138,46,.12); color:var(--ink-soft); font-size:12.5px; font-weight:700; }
   .payment-ready-carry b{ font-family:'IBM Plex Mono',monospace; font-size:15px; font-variant-numeric:tabular-nums; }
   .payment-ready-note{ margin-top:8px; color:var(--ink-soft); font-size:10.5px; line-height:1.45; opacity:.68; }
 
   @media (max-width:560px){
+    .closing-card-equation{ grid-template-columns:1fr; gap:0; padding:3px 9px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.52); }
+    .closing-card-equation > div{ flex-direction:row; align-items:center; justify-content:space-between; padding:9px 2px; border:0; border-radius:0; background:transparent; text-align:left; }
+    .closing-card-equation > div:nth-of-type(n+2){ border-top:1px solid var(--line); }
+    .closing-card-equation > i{ display:none; }
+    .closing-card-equation .result{ margin-top:2px; border-top:1px solid rgba(62,122,85,.3); background:transparent; }
+    .closing-reserve-composition{ grid-template-columns:1fr; gap:0; padding:9px 11px; border:1px solid var(--line); border-radius:10px; }
+    .closing-reserve-composition > div{ flex-direction:row; align-items:center; justify-content:space-between; padding:8px 0; background:transparent; text-align:left; }
+    .closing-reserve-composition > div:nth-of-type(n+2){ border-top:1px solid var(--line); }
+    .closing-reserve-composition > i{ display:none; }
+    .closing-reserve-composition .result{ margin-top:3px; padding-top:10px; border-top:1px solid rgba(62,122,85,.3); background:transparent; }
     .analysis-subcategory-content{ grid-template-columns:1fr; justify-items:center; }
     .analysis-subcategory-legend{ width:100%; }
   }
@@ -474,32 +498,6 @@
   }
 .monthly-overview { display: grid; gap: 12px; margin-bottom: 24px; }
 .closing-overview{ margin-top:4px; }
-.closing-overview{ box-shadow:0 10px 28px rgba(19,42,51,.08); }
-.closing-overview .payment-ready-head{ align-items:center; padding:2px 2px 10px; }
-.closing-overview .payment-ready-rows{ margin-top:4px; padding-top:12px; }
-.closing-overview .closing-section-title{ margin-top:15px; font-size:11px; letter-spacing:.35px; }
-.closing-overview .payment-ready-row{ padding:7px 2px; font-variant-numeric:tabular-nums; }
-.closing-overview .payment-ready-carry{ align-items:center; background:rgba(185,138,46,.1); }
-.closing-card-detail{ margin:5px 2px 15px; color:var(--ink-soft); font-size:11px; line-height:1.5; }
-.closing-simple-list{ padding:2px 12px; border:1px solid rgba(19,42,51,.08); border-radius:11px; background:rgba(255,255,255,.48); }
-.closing-simple-list .payment-ready-row + .payment-ready-row{ border-top:1px solid rgba(19,42,51,.07); }
-.closing-simple-list .closing-subtotal{ color:var(--ok); font-weight:800; }
-.closing-simple-list .closing-subtotal b{ font-size:14px; }
-.closing-final-total{ margin-top:14px; padding:13px 14px; border:1px solid rgba(62,122,85,.25); border-radius:12px; background:rgba(62,122,85,.07); }
-.closing-final-breakdown{ display:grid; gap:6px; padding-bottom:11px; border-bottom:1px solid rgba(19,42,51,.1); color:var(--ink-soft); font-size:11px; }
-.closing-final-breakdown span{ display:flex; justify-content:space-between; gap:10px; }
-.closing-final-breakdown b{ color:var(--ink); font-weight:650; font-variant-numeric:tabular-nums; }
-.closing-final-result{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding-top:10px; color:var(--ok); font-size:12px; font-weight:800; }
-.closing-final-result b{ font-family:'IBM Plex Mono',monospace; font-size:19px; white-space:nowrap; }
-.closing-prep-block{ margin-top:16px; padding:13px 14px 8px; border:1px solid rgba(19,42,51,.08); border-radius:12px; background:rgba(255,255,255,.55); }
-.closing-prep-heading{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; border-bottom:1px solid var(--line); }
-.closing-prep-heading .closing-section-title{ margin:0; color:var(--ink); font-size:13px; }
-.closing-prep-heading > b{ color:var(--ok); font-family:'IBM Plex Mono',monospace; font-size:17px; white-space:nowrap; }
-.closing-prep-caption{ margin-top:3px; color:var(--ink-soft); font-size:10.5px; }
-.closing-prep-list{ padding-top:5px; }
-.closing-prep-list .payment-ready-row{ padding:8px 0; }
-.closing-prep-list .payment-ready-row + .payment-ready-row{ border-top:1px solid rgba(19,42,51,.055); }
-.closing-prep-list small{ margin-left:4px; color:var(--ink-soft); font-size:10px; font-weight:500; }
 .closing-help{ margin:12px 4px 0; text-align:center; }
 .closing-member-title{ margin-top:12px; font-size:20px; font-weight:800; letter-spacing:-.4px; }
 .closing-section-title{ margin:10px 0 3px; color:var(--ink-soft); font-size:11px; font-weight:800; letter-spacing:.2px; }

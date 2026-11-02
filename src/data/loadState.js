@@ -181,20 +181,6 @@ export async function loadState(household, myUserId, members) {
     console.warn('envelope_rate_changes 테이블을 아직 사용할 수 없어요 (SQL 마이그레이션 필요할 수 있음):', err)
   }
 
-  // 2026-11부터 경조사 월 충전을 중단한다. 이력 변경만 추가해 과거 잔액과 거래를 보존한다.
-  const eventEnvelopes = irrRows.map(rowToIrregular).filter((env) => env.name?.includes('경조사') && (!env.startMonth || env.startMonth <= '2026-11'))
-  const missingEventStops = eventEnvelopes.filter((env) =>
-    !envelopeRateChanges.some((change) => change.envelopeId === env.id && change.effectiveMonth === '2026-11'),
-  )
-  if (missingEventStops.length) {
-    const stops = missingEventStops.map((env) => ({
-      id: `erc_${env.id}_2026-11`, envelopeId: env.id, effectiveMonth: '2026-11', amount: 0,
-    }))
-    const { error } = await sb.from('envelope_rate_changes').upsert(stops.map((change) => rateChangeToRow(change, household)))
-    if (!error) envelopeRateChanges = [...envelopeRateChanges, ...stops]
-    else console.warn('경조사 충전 중단 설정을 저장하지 못했어요:', error)
-  }
-
   // fixed_expense_rate_changes도 SQL 마이그레이션(v8) 전이면 테이블이 없을 수 있어 별도 처리
   let fixedRateChanges = []
   try {

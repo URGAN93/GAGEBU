@@ -18,9 +18,7 @@ export default function IrregularEnvelopeCard({ env, vKey }) {
 
   // 누적 적립액 = start_month부터 조회월까지, 각 달 시점에 유효했던 충전액을 합산 (rate 변경 이력 반영)
   const credited = creditedForEnvelope(envelopeRateChanges, envelopeBonusCredits, env, env.startMonth, vKey)
-  const thisMonthRate = env.name?.includes('경조사') && vKey >= '2026-11'
-    ? 0
-    : monthlyAmountForMonth(envelopeRateChanges, env, vKey)
+  const thisMonthRate = monthlyAmountForMonth(envelopeRateChanges, env, vKey)
   const thisMonthBonus = envelopeBonusCredits.filter((b) => b.envelopeId === env.id && b.month === vKey).reduce((sum, b) => sum + b.amount, 0)
   // 잔액 = 이월분 포함 누적 적립액 - 해당 Envelope에 귀속된 실제 지출액 (다른 카테고리 보정에 쓰이지 않음)
   const contributions = irregularContributions(transactions, env.id, env.startMonth, vKey)
