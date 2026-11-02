@@ -65,71 +65,67 @@ export default function ClosingScreen() {
               <div className="payment-ready-badge">{nextMonthLabel} 준비</div>
             </div>
             <div className="payment-ready-rows">
-              <div className="closing-section-title">{Number(vKey.slice(5, 7))}월 내 카드 결제 준비</div>
-              <div className="closing-card-equation" aria-label="내 카드 결제 준비 계산">
-                <div>
+              <div className="closing-section-title">{Number(vKey.slice(5, 7))}월 카드 결제</div>
+              <div className="closing-simple-list" aria-label="내 카드 결제 준비 내역">
+                <div className="payment-ready-row">
                   <span>결제 예정액</span>
                   <b>{fmt(summary.cardChargeTotal)}원</b>
                 </div>
-                <i>−</i>
-                <div>
+                <div className="payment-ready-row">
                   <span>이미 보관 중</span>
-                  <b>{fmt(summary.reservedTotal)}원</b>
+                  <b>− {fmt(summary.reservedTotal)}원</b>
                 </div>
-                <i>=</i>
-                <div className="result">
+                <div className="payment-ready-row closing-subtotal">
                   <span>추가 입금액</span>
                   <b>{fmt(summary.cardTopUp)}원</b>
                 </div>
               </div>
-              <div className="payment-ready-row detail">
-                <span>정산금 {fmt(summary.settlementReserve)} · 내 용돈 카드 {fmt(summary.ownerAllowanceReserve)}</span>
-              </div>
-              <div className="closing-section-title">{nextMonthLabel} 생활 준비</div>
-              <div className="payment-ready-row">
-                <span>현금성 고정지출</span>
-                <b>{fmt(summary.nextImmediateFixed)}원</b>
-              </div>
-              {householdMembers.length > 1 && (
-                <div className="payment-ready-row">
-                  <span>{otherLabel}이 결제한 가계 사용분</span>
-                  <b>{fmt(summary.spouseUsage)}원</b>
+              <div className="closing-card-detail">보관금 내역 · 정산금 {fmt(summary.settlementReserve)}원 · 내 용돈 카드 {fmt(summary.ownerAllowanceReserve)}원</div>
+              <div className="closing-prep-block">
+                <div className="closing-prep-heading">
+                  <div>
+                    <div className="closing-section-title">{nextMonthLabel} 생활 준비</div>
+                    <div className="closing-prep-caption">다음 달에 미리 마련할 금액</div>
+                  </div>
+                  <b>{fmt(summary.nextLivingPrepTotal)}원</b>
                 </div>
-              )}
-              {summary.nextSpouseAllowance > 0 && (
-                <div className="payment-ready-row">
-                  <span>{otherLabel} 용돈</span>
-                  <b>{fmt(summary.nextSpouseAllowance)}원</b>
+                <div className="closing-prep-list">
+                  <div className="payment-ready-row">
+                    <span>현금성 고정지출</span>
+                    <b>{fmt(summary.nextImmediateFixed)}원</b>
+                  </div>
+                  {summary.nextOwnerAllowance > 0 && (
+                    <div className="payment-ready-row">
+                      <span>내 용돈</span>
+                      <b>{fmt(summary.nextOwnerAllowance)}원</b>
+                    </div>
+                  )}
+                  {summary.nextSpouseAllowance > 0 && (
+                    <div className="payment-ready-row">
+                      <span>{otherLabel} 용돈</span>
+                      <b>{fmt(summary.nextSpouseAllowance)}원</b>
+                    </div>
+                  )}
+                  {householdMembers.length > 1 && (
+                    <div className="payment-ready-row">
+                      <span>{otherLabel} 카드 사용분 <small>용돈 제외</small></span>
+                      <b>{fmt(summary.spouseUsage)}원</b>
+                    </div>
+                  )}
+                  {summary.nextEventFund > 0 && <div className="payment-ready-row">
+                    <span>경조사비</span>
+                    <b>{fmt(summary.nextEventFund)}원</b>
+                  </div>}
                 </div>
-              )}
-              {summary.nextOwnerAllowance > 0 && (
-                <div className="payment-ready-row">
-                  <span>심성민 용돈</span>
-                  <b>{fmt(summary.nextOwnerAllowance)}원</b>
-                </div>
-              )}
-              <div className="payment-ready-row">
-                <span>경조사비</span>
-                <b>{fmt(summary.nextEventFund)}원</b>
-              </div>
-              <div className="payment-ready-row total">
-                <span>{nextMonthLabel} 생활 준비 합계</span>
-                <b>{fmt(summary.nextLivingPrepTotal)}원</b>
               </div>
             </div>
-            <div className="closing-reserve-composition">
-              <div>
-                <span>내 카드 결제 추가 입금</span>
-                <b>{fmt(summary.cardTopUp)}원</b>
+            <div className="closing-final-total">
+              <div className="closing-final-breakdown">
+                <span>카드 추가 입금 <b>{fmt(summary.cardTopUp)}원</b></span>
+                <span>{nextMonthLabel} 생활 준비 <b>{fmt(summary.nextLivingPrepTotal)}원</b></span>
               </div>
-              <i>+</i>
-              <div>
-                <span>{nextMonthLabel} 생활 준비</span>
-                <b>{fmt(summary.nextLivingPrepTotal)}원</b>
-              </div>
-              <i>=</i>
-              <div className="result">
-                <span>다음 월급에서 따로 둘 돈</span>
+              <div className="closing-final-result">
+                <span>이번 월급에서 따로 둘 돈</span>
                 <b>{fmt(summary.salaryReserveTotal)}원</b>
               </div>
             </div>
