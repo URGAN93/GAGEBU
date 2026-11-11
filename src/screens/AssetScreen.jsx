@@ -12,7 +12,7 @@ export default function AssetScreen() {
   const deleteAssetEntry = useAppStore((s) => s.deleteAssetEntry)
   const showToast = useAppStore((s) => s.showToast)
   const activeCol = useAppStore((s) => s.activeCol)
-  const [expandedId, setExpandedId] = useState(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [unlocked, setUnlocked] = useState(false)
   const [pinOpen, setPinOpen] = useState(false)
   const [entryCategoryId, setEntryCategoryId] = useState(null)
@@ -35,6 +35,11 @@ export default function AssetScreen() {
   }, [assetEntries])
 
   const totalAssets = useMemo(() => Object.values(totalsByCategory).reduce((s, v) => s + v, 0), [totalsByCategory])
+  const selectedCategory = assetCategories.find((cat) => cat.id === selectedCategoryId) || null
+  const selectedEntries = selectedCategory ? assetEntries
+    .filter((entry) => entry.categoryId === selectedCategory.id)
+    .slice()
+    .sort((a, b) => (b.createdAt || b.month || '').localeCompare(a.createdAt || a.month || '')) : []
 
   const nowKey = monthKey(new Date())
   // 최근 6개월(이번 달 포함) 월별 순증감 = 그 달에 기록된 entries 합계
@@ -64,13 +69,11 @@ export default function AssetScreen() {
           {assetCategories.map((cat) => {
             const amt = totalsByCategory[cat.id] || 0
             const pct = totalAssets > 0 ? Math.round((amt / totalAssets) * 100) : 0
-            const entries = assetEntries.filter((e) => e.categoryId === cat.id)
-            const expanded = expandedId === cat.id
             return (
               <div
                 key={cat.id}
-                className={`asset-cat-row${expanded ? ' expanded' : ''}`}
-                onClick={() => setExpandedId(expanded ? null : cat.id)}
+                className="asset-cat-row"
+                onClick={() => setSelectedCategoryId(cat.id)}
               >
                 <div className="asset-cat-top">
                   <div className="asset-cat-name">
@@ -82,40 +85,6 @@ export default function AssetScreen() {
                 <div className="asset-cat-amt">{fmt(amt)}원</div>
                 <div className="asset-cat-bar">
                   <div className="asset-cat-bar-fill" style={{ width: pct + '%', background: cat.color }} />
-                </div>
-                <div className="asset-cat-body">
-                  {entries.length ? (
-                    entries.map((e) => (
-                      <div key={e.id} className="asset-entry-row">
-                        <span>{e.createdAt ? e.createdAt.slice(0, 10) : e.month}</span>
-                        <span>
-                          {fmt(e.amount)}원{e.note ? ` · ${e.note}` : ''}
-                        </span>
-                        <button
-                          type="button"
-                          className="asset-entry-del"
-                          onClick={(ev) => {
-                            ev.stopPropagation()
-                            deleteAssetEntry(e.id)
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="asset-entry-empty">아직 기록이 없어요</div>
-                  )}
-                  <button
-                    type="button"
-                    className="asset-add-btn"
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      setEntryCategoryId(cat.id)
-                    }}
-                  >
-                    + 입금 추가
-                  </button>
                 </div>
               </div>
             )
@@ -174,6 +143,36 @@ export default function AssetScreen() {
           }}
           onWrong={() => showToast('PIN 번호가 틀렸어요')}
         />
+      )}
+      {selectedCategory && (
+        <div className="asset-detail-layer">
+          <button className="asset-detail-backdrop" aria-label="닫기" onClick={() => setSelectedCategoryId(null)} />
+          <section className="asset-detail-sheet" role="dialog" aria-modal="true" aria-label={`${selectedCategory.name} 내역`}>
+            <div className="sheet-handle" />
+            <header className="asset-detail-header">
+              <button type="button" className="asset-detail-back" onClick={() => setSelectedCategoryId(null)}>‹ 자산</button>
+              <span className="env-icon" style={{ background: selectedCategory.color }} />
+              <div>
+                <h2>{selectedCategory.name}</h2>
+                <div className="asset-detail-total">{fmt(totalsByCategory[selectedCategory.id] || 0)}원</div>
+              </div>
+            </header>
+            <div className="asset-detail-list">
+              <div className="asset-detail-section-title">전체 내역 <span>{selectedEntries.length}건</span></div>
+              {selectedEntries.length ? selectedEntries.map((entry) => (
+                <div key={entry.id} className="asset-detail-entry">
+                  <div className="asset-detail-entry-copy">
+                    <time>{entry.createdAt ? entry.createdAt.slice(0, 10) : entry.month}</time>
+                    <span>{entry.note || '입금(조정)'}</span>
+                  </div>
+                  <strong className={entry.amount < 0 ? 'negative' : ''}>{entry.amount > 0 ? '+' : ''}{fmt(entry.amount)}원</strong>
+                  <button type="button" className="asset-entry-del" aria-label="내역 삭제" onClick={() => deleteAssetEntry(entry.id)}>✕</button>
+                </div>
+              )) : <div className="asset-detail-empty">아직 기록이 없어요.<br />아래 버튼으로 첫 내역을 추가해 주세요.</div>}
+            </div>
+            <button type="button" className="asset-detail-add" onClick={() => setEntryCategoryId(selectedCategory.id)}>＋ 내용 추가</button>
+          </section>
+        </div>
       )}
       <AssetEntrySheet categoryId={entryCategoryId} onClose={() => setEntryCategoryId(null)} />
     </div>
